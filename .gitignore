@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+*.egg
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Project
+backend/chroma_data/
+# Allow the guideline PDFs so they ship with the image on Railway
+!backend/ingestion/cache/
+backend/ingestion/cache/*
+!backend/ingestion/cache/*.pdf
+*.log
+*.sqlite
+
+# Secrets — never commit the real .env
+backend/.env
