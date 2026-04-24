@@ -43,16 +43,16 @@ User submits question + AI answer
 
 ## Features
 
-- **Claim-level fact-checking** -- answers are broken into atomic claims, each verified independently
-- **Real guideline citations** -- evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
-- **Live web augmentation** -- Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
-- **Trust score** -- 0-100 aggregate metric weighted by claim verdicts and confidence
-- **Hallucination Rate and Source Coverage** -- two additional metrics computed directly from pipeline output, always show real numbers
-- **Corrected answer** -- a rewritten, source-grounded version of the original AI answer
-- **Follow-up chat** -- multi-turn Q&A grounded in the retrieved guideline passages, persisted per evaluation across sessions
-- **Evaluation history sidebar** -- ChatGPT-style sidebar with evaluations grouped by date, rename and delete per chat, light/dark theme
-- **JWT authentication** -- register, login, evaluations linked to user accounts
-- **Public evaluate endpoint** -- `/evaluate` works without auth; results stored anonymously
+- **Claim-level fact-checking**: answers are broken into atomic claims, each verified independently
+- **Real guideline citations**: evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
+- **Live web augmentation**: Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
+- **Trust score**: 0-100 aggregate metric weighted by claim verdicts and confidence
+- **Hallucination Rate and Source Coverage**: two additional metrics computed directly from pipeline output, always show real numbers
+- **Corrected answer**: a rewritten, source-grounded version of the original AI answer
+- **Follow-up chat**: multi-turn Q&A grounded in the retrieved guideline passages, persisted per evaluation across sessions
+- **Evaluation history sidebar**: ChatGPT-style sidebar with evaluations grouped by date, rename and delete per chat, light/dark theme
+- **JWT authentication**: register, login, evaluations linked to user accounts
+- **Public evaluate endpoint**: `/evaluate` works without auth; results stored anonymously
 
 ---
 
