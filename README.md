@@ -1,202 +1,354 @@
 # SourceMD
 
-SourceMD evaluates whether an AI-generated medical answer is factually grounded or hallucinated. It extracts atomic claims from the answer, retrieves relevant passages from real medical guidelines (AHA, WHO, NICE), scores each claim as SUPPORTED / UNSUPPORTED / CONTRADICTED with a confidence value, and returns a trust report plus a corrected, source-backed rewrite.
+**SourceMD** is an AI-powered medical fact-checker that evaluates whether an AI-generated answer is grounded in real clinical guidelines or hallucinated. Paste any medical question and an AI-generated answer — SourceMD extracts every factual claim, retrieves evidence from authoritative guideline PDFs (NICE, AHA), scores each claim as **SUPPORTED / UNSUPPORTED / CONTRADICTED**, and returns a trust score with a corrected, source-backed rewrite.
 
-## Architecture
+Built as a full-stack portfolio project demonstrating RAG pipelines, LangGraph agent orchestration, vector search, and production-shaped web application architecture.
+
+---
+
+## How It Works
 
 ```
- React + Vite (5173)
-        │  axios + JWT
-        ▼
- FastAPI backend (8080)
-        │
-        ├── LangGraph pipeline
-        │       claim_extractor ─▶ retriever ─▶ scorer
-        │              │               │          │
-        │              └── Claude ─────┴──────────┤
-        │                                         │
-        ├── RAGAS (faithfulness, context_precision)
-        │        └── ChatAnthropic judge
-        │
-        ├── SQLAlchemy ─▶ Postgres (5432)
-        │        users, evaluations, claims
-        │
-        └── SentenceTransformer (all-MiniLM-L6-v2)
-                 └── ChromaDB HTTP (8000)
-                         guidelines collection
+User submits question + AI answer
+          │
+          ▼
+┌─────────────────────────────────────────────────────┐
+│                  LangGraph Pipeline                  │
+│                                                      │
+│  1. Claim Extractor                                  │
+│     └── LLM extracts atomic factual claims          │
+│                                                      │
+│  2. Retriever                                        │
+│     ├── Embeds each claim (all-MiniLM-L6-v2)        │
+│     ├── Queries ChromaDB (cosine similarity)        │
+│     └── Augments with Tavily live web search        │
+│         when corpus similarity < 0.35               │
+│                                                      │
+│  3. Scorer                                           │
+│     ├── LLM scores each claim vs. passages          │
+│     ├── Aggregates trust score (0–100)              │
+│     ├── Synthesizes corrected answer                │
+│     └── Generates follow-up questions               │
+└─────────────────────────────────────────────────────┘
+          │
+          ▼
+   Trust Report
+   ├── Trust score (0–100)
+   ├── Hallucination Rate %
+   ├── Source Coverage %
+   ├── Per-claim verdicts with rationale + citations
+   ├── Corrected, source-backed answer
+   └── Follow-up chat (grounded in retrieved context)
 ```
 
-Four services run in Docker Compose: `postgres`, `chromadb`, `backend`, `frontend`.
+---
 
-## Prerequisites
+## Features
 
-- Docker Desktop
-- An Anthropic API key
+- **Claim-level fact-checking** — answers are broken into atomic claims, each verified independently
+- **Real guideline citations** — evidence sourced from NICE NG28, NICE NG136, NICE CG181, AHA 2025 CPR with page numbers
+- **Live web augmentation** — Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content
+- **Trust score** — 0–100 aggregate metric weighted by claim verdicts and confidence
+- **Hallucination Rate & Source Coverage** — two additional metrics computed directly from pipeline output
+- **Corrected answer** — a rewritten, source-grounded version of the original AI answer
+- **Follow-up chat** — multi-turn Q&A grounded in the retrieved guideline passages, persisted per evaluation
+- **ChatGPT-style sidebar** — evaluation history grouped by date, rename/delete per chat, light/dark theme
+- **JWT authentication** — register, login, evaluations linked to user accounts
+- **Public evaluate endpoint** — `/evaluate` works without auth; results stored anonymously
 
-No OpenAI key is needed — RAGAS is wired to use Claude (`claude-sonnet-4-20250514`) as the judge LLM. The embedding model (`sentence-transformers/all-MiniLM-L6-v2`) downloads anonymously on first run.
+---
 
-## Setup
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **LLM** | Groq `llama-3.3-70b-versatile` (free tier) · Anthropic Claude fallback |
+| **Agent framework** | LangGraph `StateGraph` — 3-node linear pipeline |
+| **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` (384-dim, runs locally) |
+| **Vector store** | ChromaDB (HTTP, cosine similarity, ~2000 guideline chunks) |
+| **Web search** | Tavily API (trusted medical domains only) |
+| **Backend** | FastAPI · SQLAlchemy 2.0 · Alembic · PostgreSQL · python-jose JWT |
+| **Frontend** | React 18 · TypeScript · Vite · Tailwind CSS · Recharts |
+| **Infrastructure** | Docker Compose (4 services) |
+
+---
+
+## Project Structure
+
+```
+sourcemd/
+├── backend/
+│   ├── main.py                   FastAPI app, CORS, router mounts
+│   ├── config.py                 Pydantic settings (env vars)
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   ├── .env.example
+│   ├── auth/
+│   │   ├── security.py           bcrypt hashing, JWT creation/decode
+│   │   └── deps.py               FastAPI auth dependencies
+│   ├── api/routes/
+│   │   ├── auth.py               POST /auth/register, /auth/login
+│   │   ├── evaluate.py           POST /evaluate
+│   │   ├── history.py            GET|DELETE /history, GET /history/{id}
+│   │   └── followup.py           POST /follow-up
+│   ├── agents/
+│   │   ├── graph.py              LangGraph StateGraph wiring
+│   │   ├── state.py              PipelineState, ScoredClaim TypedDicts
+│   │   ├── llm.py                Groq/Anthropic client + JSON extractor
+│   │   ├── embeddings.py         SentenceTransformer singleton
+│   │   ├── chroma_client.py      ChromaDB HTTP client
+│   │   ├── ragas_eval.py         Hallucination rate + source coverage metrics
+│   │   └── nodes/
+│   │       ├── claim_extractor.py
+│   │       ├── retriever.py      ChromaDB + Tavily augmentation
+│   │       └── scorer.py         Verdict scoring, trust score, correction
+│   ├── ingestion/
+│   │   ├── sources.py            Guideline registry (name, url, tag)
+│   │   ├── ingest.py             Download → chunk → embed → upsert
+│   │   └── cache/                PDF files (committed to repo)
+│   ├── db/
+│   │   ├── base.py               SQLAlchemy engine + session
+│   │   └── models.py             User, Evaluation, Claim, Verdict
+│   └── schemas/                  Pydantic v2 request/response models
+├── frontend/
+│   ├── src/
+│   │   ├── api/                  Axios client + typed endpoint wrappers
+│   │   ├── context/              ThemeContext (light/dark)
+│   │   ├── components/
+│   │   │   ├── EvalSidebar.tsx   History sidebar with rename/delete
+│   │   │   ├── TrustGauge.tsx    Recharts radial gauge
+│   │   │   ├── ClaimRow.tsx      Expandable claim with sources
+│   │   │   └── VerdictChip.tsx   SUPPORTED / UNSUPPORTED / CONTRADICTED
+│   │   └── pages/
+│   │       ├── EvaluatePage.tsx
+│   │       ├── ResultsPage.tsx   Full trust report + follow-up chat
+│   │       ├── HistoryPage.tsx
+│   │       ├── LoginPage.tsx
+│   │       └── RegisterPage.tsx
+│   ├── Dockerfile
+│   └── tailwind.config.js
+├── docker-compose.yml
+└── railway.toml
+```
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- A free [Groq API key](https://console.groq.com) (primary LLM)
+- A free [Tavily API key](https://app.tavily.com) (web search augmentation)
+
+### 1. Clone and configure
 
 ```bash
-# 1. Configure your API key
+git clone https://github.com/VanshikaGurbani/SourceMD.git
+cd SourceMD
 cp backend/.env.example backend/.env
-# edit backend/.env and set ANTHROPIC_API_KEY
-
-# 2. Build and start all 4 services
-docker compose up --build
-
-# 3. Ingest the guideline corpus (one-shot, ~2 minutes)
-docker compose run --rm backend python -m backend.ingestion.ingest
-
-# 4. Open the app
-#    http://localhost:5173
 ```
 
-The backend creates its Postgres tables on startup via `Base.metadata.create_all`, so there is no separate migration step.
+Edit `backend/.env` and fill in your keys:
 
-## API reference
+```env
+GROQ_API_KEY=gsk_...
+TAVILY_API_KEY=tvly-...
+JWT_SECRET=any-long-random-string
+```
 
-| Method | Path                   | Auth        | Purpose                               |
-|--------|------------------------|-------------|---------------------------------------|
-| GET    | `/health`              | none        | Liveness probe                        |
-| POST   | `/auth/register`       | none        | Create a user (`email`, `password`)   |
-| POST   | `/auth/login`          | none        | Return a JWT                          |
-| POST   | `/evaluate`            | optional    | Run the trust pipeline on (q, answer) |
-| GET    | `/history`             | required    | List the user's past evaluations      |
-| GET    | `/history/{id}`        | required    | Return one full report                |
+### 2. Start all services
 
-Example:
+```bash
+docker compose up --build
+```
+
+This starts 4 containers: `postgres`, `chromadb`, `backend` (port 8080), `frontend` (port 5173).  
+Tables are created automatically on backend startup.
+
+### 3. Ingest the guideline corpus
+
+```bash
+docker compose run --rm backend python -m backend.ingestion.ingest
+```
+
+Downloads and embeds ~844 chunks from 4 guideline PDFs into ChromaDB. Takes ~2 minutes on first run. Subsequent runs are idempotent.
+
+### 4. Open the app
+
+```
+http://localhost:5173
+```
+
+Register an account, paste a question + AI answer, and run your first evaluation.
+
+---
+
+## API Reference
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/health` | none | Liveness probe |
+| `POST` | `/auth/register` | none | Create account `{email, password}` |
+| `POST` | `/auth/login` | none | Returns `{access_token}` |
+| `POST` | `/evaluate` | optional | Run trust pipeline `{question, ai_answer}` |
+| `GET` | `/history` | required | List user's evaluations |
+| `GET` | `/history/{id}` | required | Full evaluation report |
+| `DELETE` | `/history/{id}` | required | Delete an evaluation |
+| `POST` | `/follow-up` | none | Chat turn `{evaluation_id, question}` |
+
+### Example — evaluate without auth
 
 ```bash
 curl -X POST http://localhost:8080/evaluate \
   -H "Content-Type: application/json" \
   -d '{
     "question": "What is the first-line drug for type 2 diabetes?",
-    "ai_answer": "Metformin is first-line; however, insulin is always required within 6 months."
+    "ai_answer": "Metformin is first-line. Insulin is mandatory within 6 months of diagnosis."
   }'
 ```
 
-## Project layout
+---
 
+## Test Cases
+
+Three inputs that demonstrate the full scoring range:
+
+### High accuracy (trust score ~85–95)
+
+**Q:** What are the recommended blood pressure targets for adults with hypertension?
+
+**A:**
 ```
-sourcemd/
-├── backend/
-│   ├── main.py                 FastAPI entrypoint
-│   ├── config.py               Pydantic settings
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   ├── .env.example
-│   ├── auth/                   JWT security + FastAPI deps
-│   ├── api/routes/             auth, evaluate, history
-│   ├── agents/                 LangGraph pipeline
-│   │   ├── graph.py            3-node linear StateGraph
-│   │   ├── state.py            TypedDict pipeline state
-│   │   ├── llm.py              Claude client + JSON parser
-│   │   ├── embeddings.py       SentenceTransformer loader
-│   │   ├── chroma_client.py    ChromaDB HTTP client
-│   │   ├── ragas_eval.py       RAGAS w/ Claude judge
-│   │   └── nodes/
-│   │       ├── claim_extractor.py
-│   │       ├── retriever.py
-│   │       └── scorer.py
-│   ├── ingestion/
-│   │   ├── sources.py          4 public guideline PDFs
-│   │   └── ingest.py           download, chunk, embed, upsert
-│   ├── db/                     SQLAlchemy Base, engine, models
-│   └── schemas/                Pydantic v2 DTOs
-├── frontend/
-│   ├── package.json
-│   ├── Dockerfile
-│   ├── tailwind.config.js
-│   └── src/
-│       ├── api/                axios client, typed endpoints
-│       ├── components/         TrustGauge, ClaimRow, VerdictChip, Navbar, ProtectedRoute
-│       └── pages/              Evaluate, Results, History, Login, Register
-├── docker-compose.yml
-└── README.md
+For adults under 80 with hypertension, the clinic blood pressure target is below
+140/90 mmHg. For people with type 2 diabetes, the target is below 130/80 mmHg.
+Lifestyle modifications including reduced salt intake and regular exercise are
+essential alongside pharmacological treatment.
 ```
-
-## Example evaluations
-
-Three representative inputs showing how the trust score scales with answer accuracy.
 
 ---
 
-### High accuracy (expected trust score ~85-95)
+### Mixed accuracy (trust score ~40–60)
 
-**Question:** `What is the recommended first-line drug for hypertension in non-diabetic adults?`
+**Q:** What is the first-line treatment for type 2 diabetes?
 
-**AI answer to paste:**
-```
-According to WHO guidelines, lifestyle modifications including reduced salt intake,
-regular physical activity, and weight management are essential first steps for
-hypertension. For pharmacological treatment, thiazide-type diuretics, ACE inhibitors,
-ARBs, or calcium channel blockers are all acceptable first-line options. Blood pressure
-targets should be below 140/90 mmHg for most adults.
-```
-
-**Expected result:** 3-4 claims, all SUPPORTED or UNSUPPORTED with high confidence,
-trust score 85+. The corrected answer closely mirrors the input. RAGAS faithfulness ~0.9.
-
----
-
-### Partially accurate (expected trust score ~45-65)
-
-**Question:** `What is the first-line treatment for type 2 diabetes?`
-
-**AI answer to paste:**
+**A:**
 ```
 Metformin is the universally recommended first-line drug for type 2 diabetes.
 Blood pressure target for diabetic patients is below 120/80 mmHg.
 Insulin is mandatory for all type 2 diabetic patients within the first year of diagnosis.
 ```
 
-**Expected result:** 3 claims — claim 1 SUPPORTED (~70% conf), claim 2 UNSUPPORTED (0% conf,
-not in corpus), claim 3 UNSUPPORTED or CONTRADICTED (~50% conf). Trust score ~55.
-This is the primary demo input shown in screenshots.
+Expected: claim 1 SUPPORTED, claim 2 CONTRADICTED (NICE says 140/90), claim 3 UNSUPPORTED.
 
 ---
 
-### High hallucination (expected trust score ~10-30)
+### High hallucination (trust score ~10–25)
 
-**Question:** `What are the current CPR guidelines for adult cardiac arrest?`
+**Q:** What are the current CPR guidelines for adult cardiac arrest?
 
-**AI answer to paste:**
+**A:**
 ```
-For adult cardiac arrest, chest compressions should be performed at 60 beats per minute
-to a depth of 1 inch. Mouth-to-mouth rescue breathing should always be given before
-starting compressions. Defibrillation should only be attempted by trained physicians
-in a hospital setting. Adrenaline should never be used during CPR as it worsens outcomes.
+For adult cardiac arrest, perform chest compressions at 60 beats per minute to a
+depth of 1 inch. Mouth-to-mouth rescue breathing must be given before starting
+compressions. Defibrillation should only be attempted by trained physicians.
+Adrenaline should never be used during CPR.
 ```
 
-**Expected result:** 4 claims, 3-4 CONTRADICTED against AHA 2020 CPR guidelines
-(correct rate is 100-120 bpm, depth 2-2.4 inches, compression-first protocol, lay
-responder defibrillation recommended). Trust score 10-25. The corrected answer will
-directly contradict the input using AHA citations with page references.
+Expected: 4 claims, 3–4 CONTRADICTED against AHA 2025 (correct rate 100–120 bpm, depth 2–2.4 inches, compression-first, lay responder AED).
 
 ---
 
-## Demo screenshots
+## Deployment
 
-Place demo captures under `docs/screenshots/` and reference them here:
+### Railway (backend + databases) + Vercel (frontend)
 
-- `docs/screenshots/evaluate.png` — input page
-- `docs/screenshots/results.png` — trust gauge + claim breakdown
-- `docs/screenshots/history.png` — past evaluations table
+#### Step 1 — Railway setup
 
-## Resume bullets
+1. Go to [railway.app](https://railway.app) → **New Project → Empty Project**
+2. **Add PostgreSQL** → `+ New → Database → PostgreSQL`  
+   Railway auto-injects `DATABASE_URL` into all services — do not set it manually.
+3. **Add ChromaDB** → `+ New → Docker Image` → image: `chromadb/chroma:0.5.11`
+   - Variables: `IS_PERSISTENT=TRUE`, `ANONYMIZED_TELEMETRY=FALSE`
+   - Note the **internal hostname** Railway assigns (e.g. `chromadb.railway.internal`)
+4. **Add backend** → `+ New → GitHub Repo` → select this repo
+   - Settings → Build → Dockerfile path: `backend/Dockerfile` · Root directory: `/`
+   - Add these environment variables:
 
-### AI / ML Engineer
+| Variable | Value |
+|---|---|
+| `GROQ_API_KEY` | your Groq key |
+| `TAVILY_API_KEY` | your Tavily key |
+| `JWT_SECRET` | any long random string |
+| `CHROMA_HOST` | internal hostname from ChromaDB service above |
+| `CHROMA_PORT` | `8000` |
+| `FRONTEND_ORIGIN` | your Vercel URL (add after step below) |
 
-- Built a 3-node LangGraph retrieval pipeline (claim extraction, dense retrieval, verdict scoring) backed by Claude Sonnet and a 4-document guideline corpus embedded with SentenceTransformer all-MiniLM-L6-v2 into ChromaDB, producing per-claim SUPPORTED / UNSUPPORTED / CONTRADICTED labels with calibrated confidence in under 8 seconds per evaluation.
-- Integrated RAGAS faithfulness and context precision metrics with a Claude-backed judge LLM, eliminating the default OpenAI dependency and giving every evaluation two independent hallucination signals alongside the pipeline's own aggregated trust score on a 0 to 100 scale.
+5. After the backend deploys, open the **Railway shell** for the backend service and run:
+   ```bash
+   python -m backend.ingestion.ingest
+   ```
 
-### Data Scientist
+#### Step 2 — Vercel setup (frontend)
 
-- Designed a character-level chunker (800 char windows, 100 char overlap) and cosine-space HNSW retrieval over roughly 2000 guideline chunks, lifting top-3 recall of the correct passage from zero in a raw LLM baseline to over 90 percent on a 20-question test set drawn from WHO, NICE, and AHA publications.
-- Engineered a confidence-weighted trust score that blends per-claim verdicts into a single 0 to 100 metric, cross-validated against RAGAS faithfulness with a Spearman correlation above 0.8, giving reviewers a single number they can rank answers on.
+1. Go to [vercel.com](https://vercel.com) → **New Project → Import Git Repository**
+2. Select this repo
+3. Configure:
+   - **Framework preset**: Vite
+   - **Root directory**: `frontend`
+   - **Build command**: `npm run build`
+   - **Output directory**: `dist`
+4. Add environment variable:
 
-### Software Engineer
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | your Railway backend public URL |
 
-- Shipped a full-stack production-shaped application with a FastAPI + PostgreSQL + SQLAlchemy backend, a React 18 + TypeScript + Tailwind + Recharts frontend, and JWT authentication covering 6 endpoints and 5 pages, orchestrated by a single `docker compose up` that boots 4 services with health checks.
-- Authored an idempotent ingestion pipeline that downloads 4 public medical PDFs, parses them with pypdf, embeds roughly 2000 chunks in batches of 64, and upserts into ChromaDB over HTTP using SHA-1 deterministic ids, making the corpus fully rebuildable with a single command.
+5. Deploy. Copy the Vercel URL and paste it into `FRONTEND_ORIGIN` on Railway.
+
+---
+
+## Environment Variables Reference
+
+### `backend/.env` (local dev)
+
+```env
+# LLM — at least one required
+GROQ_API_KEY=gsk_...                    # free at console.groq.com
+ANTHROPIC_API_KEY=sk-ant-...            # optional fallback
+
+# Web search augmentation
+TAVILY_API_KEY=tvly-...                 # free at app.tavily.com (1000/mo)
+
+# Auth
+JWT_SECRET=change-me-to-a-long-random-string
+JWT_EXPIRE_MINUTES=1440
+
+# Database (overridden by Docker Compose)
+DATABASE_URL=postgresql+psycopg2://sourcemd:sourcemd_dev_password@postgres:5432/sourcemd
+
+# ChromaDB (overridden by Docker Compose)
+CHROMA_HOST=chromadb
+CHROMA_PORT=8000
+
+# CORS
+FRONTEND_ORIGIN=http://localhost:5173
+```
+
+Copy `backend/.env.example` as a starting point — it contains all keys with placeholder values.
+
+---
+
+## Resume Bullets
+
+**AI / ML**
+- Built a 3-node LangGraph RAG pipeline (claim extraction → dense retrieval → LLM verdict scoring) over 844 embedded guideline chunks, producing per-claim SUPPORTED / UNSUPPORTED / CONTRADICTED labels with calibrated confidence scores and an aggregated 0–100 trust metric in under 10 seconds per evaluation
+- Designed a hybrid retrieval system combining ChromaDB cosine similarity search (all-MiniLM-L6-v2, 384-dim) with Tavily live web augmentation across 10 trusted medical domains, triggering web fallback when local corpus similarity drops below 0.35 to handle out-of-corpus queries gracefully
+
+**Data Science**
+- Engineered a trust scoring formula that applies fixed verdict penalties (SUPPORTED = confidence, UNSUPPORTED = 0.3, CONTRADICTED = 0.0) to prevent zero-confidence claims from silently inflating scores, and computed Hallucination Rate and Source Coverage as interpretable alternatives to RAGAS metrics
+- Implemented character-level chunking (800-char windows, 100-char overlap) with SHA-1 deterministic IDs for idempotent ChromaDB upserts, enabling full corpus rebuild from 4 guideline PDFs in under 2 minutes
+
+**Software Engineering**
+- Shipped a production-shaped full-stack application with a FastAPI + PostgreSQL + SQLAlchemy 2.0 backend, React 18 + TypeScript + Tailwind + Recharts frontend, and JWT auth covering 8 endpoints, orchestrated by a single `docker compose up` across 4 services with health checks
+- Built a ChatGPT-style evaluation history UI with persistent per-session follow-up chat (localStorage), inline rename/delete, light/dark theme toggle, and Tavily-sourced live web citations rendered with green badges alongside static guideline page references
