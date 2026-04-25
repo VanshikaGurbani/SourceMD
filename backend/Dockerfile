@@ -15,7 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy requirements first for layer caching.
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --upgrade pip && pip install -r /app/backend/requirements.txt
+
+# Install CPU-only PyTorch first to avoid the 2.5 GB CUDA build.
+RUN pip install --upgrade pip && \
+    pip install torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install -r /app/backend/requirements.txt
 
 # Copy the rest of the backend package.
 COPY backend /app/backend
