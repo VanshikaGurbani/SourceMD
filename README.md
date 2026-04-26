@@ -1,5 +1,7 @@
 # SourceMD
 
+**Live demo: [source-md.vercel.app](https://source-md.vercel.app)**
+
 SourceMD is an AI-powered medical fact-checker that evaluates whether an AI-generated answer is grounded in real clinical guidelines or hallucinated. Paste any medical question and an AI-generated answer. SourceMD extracts every factual claim, retrieves evidence from authoritative guideline PDFs (NICE, AHA), scores each claim as **SUPPORTED / UNSUPPORTED / CONTRADICTED**, and returns a trust score with a corrected, source-backed rewrite.
 
 ---
@@ -35,7 +37,7 @@ User submits question + AI answer
    - Hallucination Rate %
    - Source Coverage %
    - Per-claim verdicts with rationale and citations
-   - Corrected, source-backed answer
+   - Corrected, source-backed answer with clickable sources
    - Follow-up chat grounded in retrieved context
 ```
 
@@ -43,16 +45,18 @@ User submits question + AI answer
 
 ## Features
 
-- **Claim-level fact-checking**: answers are broken into atomic claims, each verified independently
-- **Real guideline citations**: evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
-- **Live web augmentation**: Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
-- **Trust score**: 0-100 aggregate metric weighted by claim verdicts and confidence
-- **Hallucination Rate and Source Coverage**: two additional metrics computed directly from pipeline output, always show real numbers
-- **Corrected answer**: a rewritten, source-grounded version of the original AI answer
-- **Follow-up chat**: multi-turn Q&A grounded in the retrieved guideline passages, persisted per evaluation across sessions
-- **Evaluation history sidebar**: ChatGPT-style sidebar with evaluations grouped by date, rename and delete per chat, light/dark theme
-- **JWT authentication**: register, login, evaluations linked to user accounts
-- **Public evaluate endpoint**: `/evaluate` works without auth; results stored anonymously
+- **Claim-level fact-checking** -- answers are broken into atomic claims, each verified independently
+- **Real guideline citations** -- evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
+- **Live web augmentation** -- Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
+- **Trust score** -- 0-100 aggregate metric weighted by claim verdicts and confidence
+- **Hallucination Rate and Source Coverage** -- two metrics computed directly from pipeline output
+- **Corrected answer** -- a rewritten, source-grounded version of the original AI answer with clickable citations
+- **Follow-up chat** -- multi-turn Q&A grounded in retrieved guideline passages, persisted per evaluation
+- **Evaluation history sidebar** -- ChatGPT-style sidebar grouped by date, with rename and delete
+- **Light/dark theme** -- persisted to localStorage
+- **JWT authentication** -- register, login, evaluations linked to user accounts
+- **Public evaluate endpoint** -- `/evaluate` works without auth; results stored anonymously
+- **Responsive** -- works on mobile and desktop
 
 ---
 
@@ -65,9 +69,9 @@ User submits question + AI answer
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2` (384-dim, runs locally) |
 | Vector store | ChromaDB over HTTP, cosine similarity, ~844 guideline chunks |
 | Web search | Tavily API (trusted medical domains only) |
-| Backend | FastAPI, SQLAlchemy 2.0, Alembic, PostgreSQL, python-jose JWT |
+| Backend | FastAPI, SQLAlchemy 2.0, PostgreSQL, python-jose JWT |
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, Recharts |
-| Infrastructure | Docker Compose (4 services) |
+| Infrastructure | Docker Compose (local), Railway + Vercel (production) |
 
 ---
 
@@ -78,9 +82,6 @@ sourcemd/
 ├── backend/
 │   ├── main.py                   FastAPI app, CORS, router mounts
 │   ├── config.py                 Pydantic settings from env vars
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   ├── .env.example
 │   ├── auth/
 │   │   ├── security.py           bcrypt hashing, JWT creation and decode
 │   │   └── deps.py               FastAPI auth dependencies
@@ -103,10 +104,10 @@ sourcemd/
 │   ├── ingestion/
 │   │   ├── sources.py            Guideline registry (name, url, tag)
 │   │   ├── ingest.py             Download, chunk, embed, upsert pipeline
-│   │   └── cache/                PDF files (committed to repo)
+│   │   └── cache/                PDF files committed to repo
 │   ├── db/
 │   │   ├── base.py               SQLAlchemy engine and session
-│   │   └── models.py             User, Evaluation, Claim, Verdict
+│   │   └── models.py             User, Evaluation, Claim
 │   └── schemas/                  Pydantic v2 request and response models
 ├── frontend/
 │   ├── src/
@@ -123,45 +124,10 @@ sourcemd/
 │   │       ├── HistoryPage.tsx
 │   │       ├── LoginPage.tsx
 │   │       └── RegisterPage.tsx
-│   ├── Dockerfile
 │   └── tailwind.config.js
 ├── docker-compose.yml
 └── railway.toml
 ```
-
----
-
-## Local Development
-
-### Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- A free [Groq API key](https://console.groq.com)
-- A free [Tavily API key](https://app.tavily.com)
-
-### Setup
-
-```bash
-git clone https://github.com/VanshikaGurbani/SourceMD.git
-cd SourceMD
-cp backend/.env.example backend/.env
-# Edit backend/.env and add your GROQ_API_KEY and TAVILY_API_KEY
-```
-
-### Run
-
-```bash
-# Start all 4 services
-docker compose up --build
-
-# In a second terminal, ingest the guideline corpus (one-time, ~2 minutes)
-docker compose run --rm backend python -m backend.ingestion.ingest
-
-# Open the app
-# http://localhost:5173
-```
-
-Tables are created automatically on backend startup. The ingestion step is idempotent and safe to re-run.
 
 ---
 
@@ -181,7 +147,7 @@ Tables are created automatically on backend startup. The ingestion step is idemp
 ### Example
 
 ```bash
-curl -X POST http://localhost:8080/evaluate \
+curl -X POST https://sourcemd-production.up.railway.app/evaluate \
   -H "Content-Type: application/json" \
   -d '{
     "question": "What is the first-line drug for type 2 diabetes?",
@@ -200,29 +166,21 @@ curl -X POST http://localhost:8080/evaluate \
 | NICE CG181 | nice.org.uk/guidance/cg181 | Cardiovascular Risk Assessment |
 | AHA 2025 CPR/ECC Highlights | eccguidelines.heart.org | CPR and Emergency Cardiovascular Care |
 
-Out-of-corpus queries (e.g. sepsis, plantar fasciitis) are handled by Tavily live web search against NIH, WHO, PubMed, Mayo Clinic, and other trusted domains.
+Out-of-corpus queries are handled by Tavily live web search against NIH, WHO, PubMed, Mayo Clinic, and other trusted domains.
 
 ---
 
-## Environment Variables
+## Local Development
 
-All variables are set in `backend/.env` for local development. For production, set them directly in your hosting platform.
+Requires Docker Desktop, a [Groq API key](https://console.groq.com), and a [Tavily API key](https://app.tavily.com).
 
-```env
-# LLM -- at least one required
-GROQ_API_KEY=gsk_...              # free at console.groq.com
-ANTHROPIC_API_KEY=sk-ant-...      # optional fallback
+```bash
+git clone https://github.com/VanshikaGurbani/SourceMD.git
+cd SourceMD
+cp backend/.env.example backend/.env
+# Add GROQ_API_KEY and TAVILY_API_KEY to backend/.env
 
-# Web search
-TAVILY_API_KEY=tvly-...           # free at app.tavily.com (1000/month)
-
-# Auth
-JWT_SECRET=change-me-to-a-long-random-string
-JWT_EXPIRE_MINUTES=1440
-
-# Set automatically by Docker Compose -- no need to change for local dev
-DATABASE_URL=postgresql+psycopg2://sourcemd:sourcemd_dev_password@postgres:5432/sourcemd
-CHROMA_HOST=chromadb
-CHROMA_PORT=8000
-FRONTEND_ORIGIN=http://localhost:5173
+docker compose up --build
+docker compose run --rm backend python -m backend.ingestion.ingest
+# Open http://localhost:5173
 ```
