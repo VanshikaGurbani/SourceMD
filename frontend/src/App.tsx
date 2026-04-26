@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import EvalSidebar from "./components/EvalSidebar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import EvaluatePage from "./pages/EvaluatePage";
@@ -20,9 +20,6 @@ export default function App() {
 
 function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
-
-  // Close sidebar on navigation
   const handleNavClose = () => setSidebarOpen(false);
 
   return (
