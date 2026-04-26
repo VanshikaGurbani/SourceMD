@@ -173,19 +173,3 @@ docker compose up --build
 docker compose run --rm backend python -m backend.ingestion.ingest
 # Open http://localhost:5173
 ```
-
----
-
-## Resume Bullets
-
-**AI / ML**
-- Built a LangGraph RAG pipeline that decomposes AI-generated medical answers into atomic claims, retrieves supporting evidence from 844 embedded guideline chunks (NICE, AHA) via ChromaDB cosine similarity, and classifies each claim as SUPPORTED / UNSUPPORTED / CONTRADICTED using an LLM judge, producing a 0-100 trust score
-- Implemented a hybrid retrieval strategy that falls back to Tavily live web search against curated medical domains (NIH, WHO, PubMed) when local corpus similarity drops below 0.35, ensuring coverage for out-of-corpus queries without degrading precision on in-corpus ones
-
-**Data Science**
-- Designed two evaluation metrics — Hallucination Rate (fraction of claims not supported by retrieved passages) and Source Coverage (proportion of claims with at least one high-similarity citation) — computed per-inference and surfaced alongside confidence breakdowns for each extracted claim
-- Ingested and chunked 4 authoritative clinical guideline PDFs into 844 overlapping 800-character windows with 100-character stride, embedded with all-MiniLM-L6-v2 (384-dim), and stored in a persistent ChromaDB collection, achieving sub-second nearest-neighbour retrieval at inference time
-
-**Software Engineering**
-- Deployed a full-stack application on Railway (FastAPI + PostgreSQL + ChromaDB) and Vercel (React + TypeScript), keeping the Docker image under 4 GB by installing CPU-only PyTorch ahead of the requirements layer and reducing cold-start memory by 60%
-- Engineered a privacy-first persistence model with no user accounts: evaluations are stored anonymously in PostgreSQL and retrievable by numeric ID, with device-local localStorage holding the history index — shareable via URL while keeping server-side data unlinkable to any individual
