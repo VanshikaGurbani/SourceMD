@@ -93,7 +93,7 @@ function MoonIcon() {
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export default function EvalSidebar() {
+export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [history, setHistory] = useState<EvaluationListItem[]>([]);
   const [customNames, setCustomNames] = useState<Record<string, string>>(getCustomNames);
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -168,6 +168,7 @@ export default function EvalSidebar() {
         </Link>
         <Link
           to="/evaluate"
+          onClick={onNavigate}
           className="flex items-center gap-2 w-full px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-sm text-slate-200 transition-colors"
         >
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,6 +235,7 @@ export default function EvalSidebar() {
                       <div className={`flex items-start rounded-md transition-colors ${isActive ? "bg-slate-700" : "hover:bg-slate-800"}`}>
                         <Link
                           to={`/results/${item.id}`}
+                          onClick={onNavigate}
                           className="flex items-start gap-2.5 flex-1 min-w-0 px-3 py-2 text-sm"
                         >
                           <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${trustDot(item.trust_score)}`} />
