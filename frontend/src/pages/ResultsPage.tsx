@@ -268,18 +268,35 @@ export default function ResultsPage() {
         )}
 
         {messages.length > 0 && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-4 mb-4 max-h-96 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-4 mb-4 max-h-[32rem] overflow-y-auto">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900"
-                      : "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200"
-                  }`}
-                >
-                  {msg.text}
+              <div key={i}>
+                <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900"
+                        : "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200"
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
                 </div>
+                {/* Show follow-up chips after each assistant message */}
+                {msg.role === "assistant" && i === messages.length - 1 && !chatLoading && followUps.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2 ml-1">
+                    {followUps.map((q, qi) => (
+                      <button
+                        key={qi}
+                        type="button"
+                        onClick={() => handleFollowUp(q)}
+                        className="text-xs px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {chatLoading && (
