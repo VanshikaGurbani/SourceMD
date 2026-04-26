@@ -181,8 +181,57 @@ export default function ResultsPage() {
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
           Corrected, source-backed answer
         </h2>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 whitespace-pre-wrap text-slate-800 dark:text-slate-200 leading-relaxed">
-          {data.corrected_answer}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
+          <p className="whitespace-pre-wrap text-slate-800 dark:text-slate-200 leading-relaxed">
+            {/* Strip any trailing "Sources: …" line the LLM appends — we render sources properly below */}
+            {data.corrected_answer.replace(/\n*Sources:[\s\S]*$/i, "").trim()}
+          </p>
+          {/* Deduplicated sources from all claims */}
+          {(() => {
+            const seen = new Set<string>();
+            const sources = data.claims.flatMap((c) => c.sources).filter((s) => {
+              const key = `${s.doc}-${s.page}-${s.chunk}`;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            if (sources.length === 0) return null;
+            return (
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+                  Sources
+                </p>
+                <ul className="space-y-1.5">
+                  {sources.map((s, i) => {
+                    const isWeb = s.chunk === -1;
+                    const link = s.web_url || s.source_url || "";
+                    return (
+                      <li key={i} className="flex items-center gap-2 text-sm flex-wrap">
+                        {link ? (
+                          <a href={link} target="_blank" rel="noopener noreferrer"
+                            className="font-medium text-blue-700 dark:text-blue-400 hover:underline">
+                            {s.doc}
+                          </a>
+                        ) : (
+                          <span className="font-medium text-slate-800 dark:text-slate-200">{s.doc}</span>
+                        )}
+                        {!isWeb && s.page > 0 && (
+                          <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                            p.{s.page}
+                          </span>
+                        )}
+                        {isWeb && (
+                          <span className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 px-1.5 py-0.5 rounded font-medium">
+                            ● live web
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })()}
         </div>
       </section>
 
