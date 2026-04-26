@@ -65,7 +65,7 @@ def evaluate(
         ClaimOut(
             id=i,
             text=cr.text,
-            verdict=str(cr.verdict).upper(),
+            verdict=cr.verdict.value if hasattr(cr.verdict, "value") else str(cr.verdict).split(".")[-1].upper(),
             confidence=cr.confidence,
             rationale=cr.rationale,
             sources=cr.sources,
