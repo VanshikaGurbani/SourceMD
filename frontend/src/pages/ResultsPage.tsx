@@ -50,13 +50,15 @@ export default function ResultsPage() {
       .catch(() => setError("Unable to load this evaluation. Login may be required."));
   }, [id, prefetched]);
 
-  // Restore persisted chat
+  // Restore persisted chat — always reset messages when id changes
   useEffect(() => {
     if (!id) return;
     try {
       const saved = localStorage.getItem(chatKey(id));
-      if (saved) setMessages(JSON.parse(saved));
-    } catch { /* ignore */ }
+      setMessages(saved ? JSON.parse(saved) : []);
+    } catch {
+      setMessages([]);
+    }
   }, [id]);
 
   // Persist chat on change
