@@ -104,7 +104,8 @@ def _format_evidence(scored: list[ScoredClaim]) -> str:
     lines: list[str] = []
     for i, sc in enumerate(scored, start=1):
         source_tags = ", ".join(
-            f"{s['doc']} p.{s['page']}" for s in sc["sources"]
+            s["doc"] if s.get("chunk") == -1 else f"{s['doc']} p.{s['page']}"
+            for s in sc["sources"]
         ) or "(none)"
         lines.append(
             f"{i}. Claim: {sc['text']}\n"
