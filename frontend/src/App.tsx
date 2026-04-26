@@ -1,9 +1,16 @@
 import { useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import EvalSidebar from "./components/EvalSidebar";
 import EvaluatePage from "./pages/EvaluatePage";
 import HistoryPage from "./pages/HistoryPage";
 import ResultsPage from "./pages/ResultsPage";
+
+/** Forces a full unmount+remount of ResultsPage when the :id changes,
+ *  so chat messages, data, and scroll position never bleed between evals. */
+function ResultsPageKeyed() {
+  const { id } = useParams();
+  return <ResultsPage key={id} />;
+}
 
 export default function App() {
   return (
@@ -55,7 +62,7 @@ function AppLayout() {
           <Routes>
             <Route path="/" element={<Navigate to="/evaluate" replace />} />
             <Route path="/evaluate" element={<EvaluatePage />} />
-            <Route path="/results/:id" element={<ResultsPage />} />
+            <Route path="/results/:id" element={<ResultsPageKeyed />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="*" element={<Navigate to="/evaluate" replace />} />
           </Routes>
