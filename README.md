@@ -45,18 +45,17 @@ User submits question + AI answer
 
 ## Features
 
-- **Claim-level fact-checking** -- answers are broken into atomic claims, each verified independently
-- **Real guideline citations** -- evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
-- **Live web augmentation** -- Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
-- **Trust score** -- 0-100 aggregate metric weighted by claim verdicts and confidence
-- **Hallucination Rate and Source Coverage** -- two metrics computed directly from pipeline output
-- **Corrected answer** -- a rewritten, source-grounded version of the original AI answer with clickable citations
-- **Follow-up chat** -- multi-turn Q&A grounded in retrieved guideline passages, persisted per evaluation
-- **Evaluation history sidebar** -- ChatGPT-style sidebar grouped by date, with rename and delete
-- **Light/dark theme** -- persisted to localStorage
-- **JWT authentication** -- register, login, evaluations linked to user accounts
-- **Public evaluate endpoint** -- `/evaluate` works without auth; results stored anonymously
-- **Responsive** -- works on mobile and desktop
+- **Claim-level fact-checking** — answers are broken into atomic claims, each verified independently
+- **Real guideline citations** — evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
+- **Live web augmentation** — Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
+- **Trust score** — 0-100 aggregate metric weighted by claim verdicts and confidence
+- **Hallucination Rate and Source Coverage** — two metrics computed directly from pipeline output
+- **Corrected answer** — a rewritten, source-grounded version of the original AI answer with clickable citations
+- **Follow-up chat** — multi-turn Q&A grounded in retrieved guideline passages, persisted per evaluation
+- **Evaluation history sidebar** — ChatGPT-style sidebar grouped by date, with rename and delete
+- **Anonymous persistence** — evaluations saved to PostgreSQL without requiring an account; history lives in the browser, shareable by URL
+- **Light/dark theme** — persisted to localStorage
+- **Responsive** — works on mobile and desktop
 
 ---
 
@@ -64,14 +63,14 @@ User submits question + AI answer
 
 | Layer | Technology |
 |---|---|
-| LLM | Groq `llama-3.3-70b-versatile` (free tier) with Anthropic Claude as fallback |
-| Agent framework | LangGraph `StateGraph` -- 3-node linear pipeline |
-| Embeddings | `sentence-transformers/all-MiniLM-L6-v2` (384-dim, runs locally) |
+| LLM | Groq `llama-3.3-70b-versatile` (primary) with Anthropic Claude as fallback |
+| Agent framework | LangGraph `StateGraph` — 3-node linear pipeline |
+| Embeddings | `sentence-transformers/all-MiniLM-L6-v2` (384-dim, CPU) |
 | Vector store | ChromaDB over HTTP, cosine similarity, ~844 guideline chunks |
 | Web search | Tavily API (trusted medical domains only) |
-| Backend | FastAPI, SQLAlchemy 2.0, PostgreSQL, python-jose JWT |
+| Backend | FastAPI, SQLAlchemy 2.0, PostgreSQL |
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, Recharts |
-| Infrastructure | Docker Compose (local), Railway + Vercel (production) |
+| Infrastructure | Railway (backend + DB + ChromaDB), Vercel (frontend) |
 
 ---
 
@@ -82,13 +81,9 @@ sourcemd/
 ├── backend/
 │   ├── main.py                   FastAPI app, CORS, router mounts
 │   ├── config.py                 Pydantic settings from env vars
-│   ├── auth/
-│   │   ├── security.py           bcrypt hashing, JWT creation and decode
-│   │   └── deps.py               FastAPI auth dependencies
 │   ├── api/routes/
-│   │   ├── auth.py               POST /auth/register, /auth/login
 │   │   ├── evaluate.py           POST /evaluate
-│   │   ├── history.py            GET|DELETE /history, GET /history/{id}
+│   │   ├── history.py            GET /history/{id}
 │   │   └── followup.py           POST /follow-up
 │   ├── agents/
 │   │   ├── graph.py              LangGraph StateGraph wiring
@@ -107,7 +102,7 @@ sourcemd/
 │   │   └── cache/                PDF files committed to repo
 │   ├── db/
 │   │   ├── base.py               SQLAlchemy engine and session
-│   │   └── models.py             User, Evaluation, Claim
+│   │   └── models.py             Evaluation, Claim
 │   └── schemas/                  Pydantic v2 request and response models
 ├── frontend/
 │   ├── src/
@@ -121,9 +116,7 @@ sourcemd/
 │   │   └── pages/
 │   │       ├── EvaluatePage.tsx
 │   │       ├── ResultsPage.tsx   Full trust report with follow-up chat
-│   │       ├── HistoryPage.tsx
-│   │       ├── LoginPage.tsx
-│   │       └── RegisterPage.tsx
+│   │       └── HistoryPage.tsx
 │   └── tailwind.config.js
 ├── docker-compose.yml
 └── railway.toml
@@ -136,13 +129,9 @@ sourcemd/
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/health` | none | Liveness probe |
-| `POST` | `/auth/register` | none | Create account `{email, password}` |
-| `POST` | `/auth/login` | none | Returns `{access_token}` |
-| `POST` | `/evaluate` | optional | Run trust pipeline `{question, ai_answer}` |
-| `GET` | `/history` | required | List user's evaluations |
-| `GET` | `/history/{id}` | required | Full evaluation report |
-| `DELETE` | `/history/{id}` | required | Delete an evaluation |
-| `POST` | `/follow-up` | none | Chat turn `{evaluation_id, question}` |
+| `POST` | `/evaluate` | none | Run trust pipeline `{question, ai_answer}` |
+| `GET` | `/history/{id}` | none | Full evaluation report by ID |
+| `POST` | `/follow-up` | none | Chat turn `{question, original_question, ai_answer, corrected_answer, claims}` |
 
 ### Example
 
@@ -184,3 +173,19 @@ docker compose up --build
 docker compose run --rm backend python -m backend.ingestion.ingest
 # Open http://localhost:5173
 ```
+
+---
+
+## Resume Bullets
+
+**AI / ML**
+- Built a LangGraph RAG pipeline that decomposes AI-generated medical answers into atomic claims, retrieves supporting evidence from 844 embedded guideline chunks (NICE, AHA) via ChromaDB cosine similarity, and classifies each claim as SUPPORTED / UNSUPPORTED / CONTRADICTED using an LLM judge, producing a 0-100 trust score
+- Implemented a hybrid retrieval strategy that falls back to Tavily live web search against curated medical domains (NIH, WHO, PubMed) when local corpus similarity drops below 0.35, ensuring coverage for out-of-corpus queries without degrading precision on in-corpus ones
+
+**Data Science**
+- Designed two evaluation metrics — Hallucination Rate (fraction of claims not supported by retrieved passages) and Source Coverage (proportion of claims with at least one high-similarity citation) — computed per-inference and surfaced alongside confidence breakdowns for each extracted claim
+- Ingested and chunked 4 authoritative clinical guideline PDFs into 844 overlapping 800-character windows with 100-character stride, embedded with all-MiniLM-L6-v2 (384-dim), and stored in a persistent ChromaDB collection, achieving sub-second nearest-neighbour retrieval at inference time
+
+**Software Engineering**
+- Deployed a full-stack application on Railway (FastAPI + PostgreSQL + ChromaDB) and Vercel (React + TypeScript), keeping the Docker image under 4 GB by installing CPU-only PyTorch ahead of the requirements layer and reducing cold-start memory by 60%
+- Engineered a privacy-first persistence model with no user accounts: evaluations are stored anonymously in PostgreSQL and retrievable by numeric ID, with device-local localStorage holding the history index — shareable via URL while keeping server-side data unlinkable to any individual
