@@ -6,8 +6,8 @@ export interface SourceCitation {
   chunk: number;
   score: number;
   text: string;
-  source_url?: string;  // PDF download URL
-  web_url?: string;     // canonical guideline webpage
+  source_url?: string;
+  web_url?: string;
 }
 
 export interface ClaimOut {
@@ -20,7 +20,7 @@ export interface ClaimOut {
 }
 
 export interface EvaluationOut {
-  id: number;
+  id: string;
   question: string;
   ai_answer: string;
   trust_score: number;
@@ -33,19 +33,8 @@ export interface EvaluationOut {
 }
 
 export interface EvaluationListItem {
-  id: number;
+  id: string;
   question: string;
   trust_score: number;
-  created_at: string;
-}
-
-export interface Token {
-  access_token: string;
-  token_type: string;
-}
-
-export interface UserOut {
-  id: number;
-  email: string;
   created_at: string;
 }

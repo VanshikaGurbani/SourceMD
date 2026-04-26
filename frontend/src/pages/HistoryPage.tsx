@@ -1,22 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listHistory } from "../api/endpoints";
+import { getHistoryIndex } from "./EvaluatePage";
 import type { EvaluationListItem } from "../api/types";
 
 export default function HistoryPage() {
   const [rows, setRows] = useState<EvaluationListItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    listHistory()
-      .then(setRows)
-      .catch(() => setError("Failed to load history."))
-      .finally(() => setLoading(false));
+    setRows(getHistoryIndex());
+    setLoading(false);
   }, []);
 
-  if (loading) return <p className="text-slate-600 dark:text-slate-400">Loading history…</p>;
-  if (error) return <p className="text-red-600 dark:text-red-400">{error}</p>;
+  if (loading) return <p className="text-slate-600 dark:text-slate-400">Loading…</p>;
 
   return (
     <div>

@@ -1,6 +1,60 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { evaluate } from "../api/endpoints";
+import type { EvaluationListItem, EvaluationOut } from "../api/types";
+
+const HISTORY_KEY = "sourcemd_history";
+const EVAL_KEY = (id: string) => `sourcemd_eval_${id}`;
+
+export function saveEvaluation(result: EvaluationOut): void {
+  // Store full result
+  localStorage.setItem(EVAL_KEY(result.id), JSON.stringify(result));
+  // Update history index
+  const existing: EvaluationListItem[] = getHistoryIndex();
+  const item: EvaluationListItem = {
+    id: result.id,
+    question: result.question,
+    trust_score: result.trust_score,
+    created_at: result.created_at,
+  };
+  localStorage.setItem(HISTORY_KEY, JSON.stringify([item, ...existing]));
+}
+
+export function getHistoryIndex(): EvaluationListItem[] {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+export function getEvaluationById(id: string): EvaluationOut | null {
+  try {
+    const raw = localStorage.getItem(EVAL_KEY(id));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function deleteEvaluationById(id: string): void {
+  localStorage.removeItem(EVAL_KEY(id));
+  localStorage.removeItem(`sourcemd_chat_${id}`);
+  const updated = getHistoryIndex().filter((item) => item.id !== id);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+}
+
+export function renameEvaluation(id: string, name: string): void {
+  const history = getHistoryIndex().map((item) =>
+    item.id === id ? { ...item, question: name } : item
+  );
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  // Also update the full eval
+  const full = getEvaluationById(id);
+  if (full) {
+    localStorage.setItem(EVAL_KEY(id), JSON.stringify({ ...full, question: name }));
+  }
+}
 
 export default function EvaluatePage() {
   const navigate = useNavigate();
@@ -15,6 +69,7 @@ export default function EvaluatePage() {
     setLoading(true);
     try {
       const result = await evaluate(question, answer);
+      saveEvaluation(result);
       navigate(`/results/${result.id}`, { state: result });
     } catch (err) {
       const message =

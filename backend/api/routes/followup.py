@@ -1,13 +1,10 @@
-"""POST /follow-up — answer a follow-up question using evaluation context."""
+"""POST /follow-up — answer a follow-up question using context sent by the client."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
 from backend.agents.llm import claude_complete
-from backend.db.base import get_db
-from backend.db.models import Evaluation
 
 router = APIRouter(tags=["followup"])
 
@@ -38,44 +35,46 @@ Base your answer on the corrected answer and claim verdicts above.
 If the context doesn't contain enough information to answer, say so explicitly."""
 
 
-class FollowUpRequest(BaseModel):
-    """Request body for POST /follow-up."""
+class ClaimContext(BaseModel):
+    """Minimal claim info sent by the client for follow-up context."""
 
-    evaluation_id: int
+    verdict: str
+    text: str
+
+
+class FollowUpRequest(BaseModel):
+    """Request body for POST /follow-up.
+
+    The client sends the evaluation context so nothing needs to be stored
+    server-side between requests.
+    """
+
     question: str = Field(min_length=3, max_length=2000)
+    original_question: str = Field(min_length=3, max_length=4000)
+    ai_answer: str = Field(min_length=1, max_length=10000)
+    corrected_answer: str = Field(min_length=1, max_length=10000)
+    claims: list[ClaimContext] = []
 
 
 class FollowUpResponse(BaseModel):
     """Response from POST /follow-up."""
 
     answer: str
-    evaluation_id: int
 
 
 @router.post("/follow-up", response_model=FollowUpResponse)
-def follow_up(
-    payload: FollowUpRequest,
-    db: Session = Depends(get_db),
-) -> FollowUpResponse:
-    """Answer a follow-up question grounded in a previous evaluation's context.
+def follow_up(payload: FollowUpRequest) -> FollowUpResponse:
+    """Answer a follow-up question grounded in the client-supplied evaluation context.
 
-    Retrieves the evaluation by id, builds a context-rich prompt, and returns
-    a Claude / Groq response. The endpoint is intentionally public so users
-    can ask follow-ups without being logged in.
+    No database lookup is performed — the caller provides all context needed.
     """
-    evaluation = db.get(Evaluation, payload.evaluation_id)
-    if evaluation is None:
-        raise HTTPException(status_code=404, detail="Evaluation not found")
-
-    claim_lines = []
-    for c in evaluation.claims:
-        claim_lines.append(f"  - [{c.verdict}] {c.text}")
+    claim_lines = [f"  - [{c.verdict}] {c.text}" for c in payload.claims]
     claim_summary = "\n".join(claim_lines) if claim_lines else "  (no claims)"
 
     prompt = _PROMPT_TEMPLATE.format(
-        question=evaluation.question,
-        ai_answer=evaluation.ai_answer,
-        corrected_answer=evaluation.corrected_answer,
+        question=payload.original_question,
+        ai_answer=payload.ai_answer,
+        corrected_answer=payload.corrected_answer,
         claim_summary=claim_summary,
         follow_up=payload.question,
     )
@@ -85,4 +84,4 @@ def follow_up(
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    return FollowUpResponse(answer=answer, evaluation_id=payload.evaluation_id)
+    return FollowUpResponse(answer=answer)

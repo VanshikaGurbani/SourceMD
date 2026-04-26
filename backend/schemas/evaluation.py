@@ -21,6 +21,7 @@ class SourceCitation(BaseModel):
     score: float
     text: str
     source_url: str = ""
+    web_url: str = ""
 
 
 class ClaimOut(BaseModel):
@@ -33,14 +34,11 @@ class ClaimOut(BaseModel):
     rationale: str
     sources: list[dict[str, Any]]
 
-    class Config:
-        from_attributes = True
-
 
 class EvaluationOut(BaseModel):
-    """Full trust report for one evaluation."""
+    """Full trust report for one evaluation. No DB row — returned directly."""
 
-    id: int
+    id: str  # client-usable UUID string
     question: str
     ai_answer: str
     trust_score: float
@@ -51,17 +49,11 @@ class EvaluationOut(BaseModel):
     created_at: datetime
     claims: list[ClaimOut]
 
-    class Config:
-        from_attributes = True
-
 
 class EvaluationListItem(BaseModel):
-    """Compact row for the /history list view."""
+    """Compact row for the local history list."""
 
-    id: int
+    id: str
     question: str
     trust_score: float
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
+    created_at: str

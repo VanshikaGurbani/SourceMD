@@ -1,20 +1,5 @@
 import { apiClient } from "./client";
-import type {
-  EvaluationListItem,
-  EvaluationOut,
-  Token,
-  UserOut,
-} from "./types";
-
-export async function register(email: string, password: string): Promise<UserOut> {
-  const { data } = await apiClient.post<UserOut>("/auth/register", { email, password });
-  return data;
-}
-
-export async function login(email: string, password: string): Promise<Token> {
-  const { data } = await apiClient.post<Token>("/auth/login", { email, password });
-  return data;
-}
+import type { ClaimOut, EvaluationOut } from "./types";
 
 export async function evaluate(
   question: string,
@@ -27,27 +12,19 @@ export async function evaluate(
   return data;
 }
 
-export async function listHistory(): Promise<EvaluationListItem[]> {
-  const { data } = await apiClient.get<EvaluationListItem[]>("/history");
-  return data;
-}
-
-export async function getEvaluation(id: number): Promise<EvaluationOut> {
-  const { data } = await apiClient.get<EvaluationOut>(`/history/${id}`);
-  return data;
-}
-
-export async function deleteEvaluation(id: number): Promise<void> {
-  await apiClient.delete(`/history/${id}`);
-}
-
 export async function sendFollowUp(
-  evaluationId: number,
-  question: string
-): Promise<{ answer: string; evaluation_id: number }> {
+  question: string,
+  originalQuestion: string,
+  aiAnswer: string,
+  correctedAnswer: string,
+  claims: ClaimOut[]
+): Promise<{ answer: string }> {
   const { data } = await apiClient.post("/follow-up", {
-    evaluation_id: evaluationId,
     question,
+    original_question: originalQuestion,
+    ai_answer: aiAnswer,
+    corrected_answer: correctedAnswer,
+    claims: claims.map((c) => ({ verdict: c.verdict, text: c.text })),
   });
   return data;
 }

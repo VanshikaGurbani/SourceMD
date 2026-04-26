@@ -1,27 +1,8 @@
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { clearToken, getToken } from "../api/client";
 import { useTheme } from "../context/ThemeContext";
-import { deleteEvaluation, listHistory } from "../api/endpoints";
+import { deleteEvaluationById, getHistoryIndex, renameEvaluation } from "../pages/EvaluatePage";
 import type { EvaluationListItem } from "../api/types";
-
-// ── localStorage helpers for custom names ────────────────────────────────────
-
-const NAMES_KEY = "sourcemd_names";
-
-function getCustomNames(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(NAMES_KEY) || "{}"); } catch { return {}; }
-}
-function saveCustomName(id: number, name: string) {
-  const names = getCustomNames();
-  names[String(id)] = name.trim();
-  localStorage.setItem(NAMES_KEY, JSON.stringify(names));
-}
-function clearCustomName(id: number) {
-  const names = getCustomNames();
-  delete names[String(id)];
-  localStorage.setItem(NAMES_KEY, JSON.stringify(names));
-}
 
 // ── date grouping ─────────────────────────────────────────────────────────────
 
@@ -95,24 +76,22 @@ function MoonIcon() {
 
 export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [history, setHistory] = useState<EvaluationListItem[]>([]);
-  const [customNames, setCustomNames] = useState<Record<string, string>>(getCustomNames);
-  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const location = useLocation();
   const navigate = useNavigate();
-  const authed = Boolean(getToken());
   const { theme, toggle: toggleTheme } = useTheme();
 
-  const match = location.pathname.match(/^\/results\/(\d+)$/);
-  const activeId = match ? Number(match[1]) : null;
+  const match = location.pathname.match(/^\/results\/(.+)$/);
+  const activeId = match ? match[1] : null;
 
+  // Reload history from localStorage whenever route changes
   useEffect(() => {
-    if (!authed) return;
-    listHistory().then(setHistory).catch(() => {});
-  }, [location.pathname, authed]);
+    setHistory(getHistoryIndex());
+  }, [location.pathname]);
 
   useEffect(() => {
     if (renamingId !== null) renameInputRef.current?.focus();
@@ -120,50 +99,38 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
 
   function startRename(item: EvaluationListItem) {
     setRenamingId(item.id);
-    setRenameValue(customNames[String(item.id)] || item.question);
+    setRenameValue(item.question);
     setDeletingId(null);
   }
 
-  function commitRename(id: number) {
+  function commitRename(id: string) {
     const trimmed = renameValue.trim();
     if (trimmed) {
-      saveCustomName(id, trimmed);
-      setCustomNames(getCustomNames());
+      renameEvaluation(id, trimmed);
+      setHistory(getHistoryIndex());
     }
     setRenamingId(null);
   }
 
-  function handleRenameKey(e: KeyboardEvent, id: number) {
+  function handleRenameKey(e: KeyboardEvent, id: string) {
     if (e.key === "Enter") commitRename(id);
     if (e.key === "Escape") setRenamingId(null);
   }
 
-  async function confirmDelete(id: number) {
-    try {
-      await deleteEvaluation(id);
-      setHistory((h) => h.filter((i) => i.id !== id));
-      clearCustomName(id);
-      setCustomNames(getCustomNames());
-      localStorage.removeItem(`sourcemd_chat_${id}`);
-      if (activeId === id) navigate("/evaluate");
-    } catch {
-      // silent fail — item stays in list
-    }
+  function confirmDelete(id: string) {
+    deleteEvaluationById(id);
+    setHistory(getHistoryIndex());
     setDeletingId(null);
-  }
-
-  function handleLogout() {
-    clearToken();
-    navigate("/evaluate");
+    if (activeId === id) navigate("/evaluate");
   }
 
   const groups = groupByDate(history);
 
   return (
-    <aside className="w-64 shrink-0 h-screen sticky top-0 bg-slate-900 flex flex-col border-r border-slate-700/60">
+    <aside className="w-64 shrink-0 h-screen bg-slate-900 flex flex-col border-r border-slate-700/60">
       {/* Header */}
       <div className="p-4 border-b border-slate-700/60">
-        <Link to="/evaluate" className="text-base font-semibold text-white block mb-3 tracking-tight">
+        <Link to="/evaluate" onClick={onNavigate} className="text-base font-semibold text-white block mb-3 tracking-tight">
           SourceMD
         </Link>
         <Link
@@ -180,19 +147,7 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
 
       {/* History list */}
       <nav className="flex-1 overflow-y-auto py-2">
-        {!authed ? (
-          <div className="px-4 py-8 text-center">
-            <p className="text-slate-400 text-xs leading-relaxed mb-4">
-              Sign in to save evaluations and access history.
-            </p>
-            <Link to="/login" className="block w-full text-center px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-sm text-slate-200 transition-colors mb-2">
-              Log in
-            </Link>
-            <Link to="/register" className="block w-full text-center px-3 py-1.5 rounded-md border border-slate-600 hover:bg-slate-800 text-sm text-slate-300 transition-colors">
-              Register
-            </Link>
-          </div>
-        ) : groups.length === 0 ? (
+        {groups.length === 0 ? (
           <p className="px-4 py-8 text-slate-500 text-xs text-center">No evaluations yet.</p>
         ) : (
           groups.map((group) => (
@@ -204,12 +159,10 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
                 const isActive = activeId === item.id;
                 const isDeleting = deletingId === item.id;
                 const isRenaming = renamingId === item.id;
-                const displayName = customNames[String(item.id)] || item.question;
 
                 return (
                   <div key={item.id} className="group mx-2 mb-0.5">
                     {isDeleting ? (
-                      /* Confirm delete */
                       <div className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-red-900/40 border border-red-700/50 text-xs text-red-300">
                         <span className="flex-1">Delete this?</span>
                         <button onClick={() => confirmDelete(item.id)} className="text-red-300 hover:text-white font-medium">Yes</button>
@@ -217,7 +170,6 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
                         <button onClick={() => setDeletingId(null)} className="text-slate-400 hover:text-white">No</button>
                       </div>
                     ) : isRenaming ? (
-                      /* Inline rename input */
                       <div className="px-2 py-1">
                         <input
                           ref={renameInputRef}
@@ -231,7 +183,6 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
                         <p className="text-slate-500 text-xs mt-0.5 px-1">Enter to save · Esc to cancel</p>
                       </div>
                     ) : (
-                      /* Normal item */
                       <div className={`flex items-start rounded-md transition-colors ${isActive ? "bg-slate-700" : "hover:bg-slate-800"}`}>
                         <Link
                           to={`/results/${item.id}`}
@@ -240,10 +191,9 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
                         >
                           <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${trustDot(item.trust_score)}`} />
                           <span className={`truncate leading-snug ${isActive ? "text-white" : "text-slate-300 group-hover:text-white"}`}>
-                            {displayName.length > 52 ? `${displayName.slice(0, 52)}…` : displayName}
+                            {item.question.length > 52 ? `${item.question.slice(0, 52)}…` : item.question}
                           </span>
                         </Link>
-                        {/* Action buttons — shown on hover */}
                         <div className="flex items-center gap-0.5 pr-1.5 pt-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                           <button
                             type="button"
@@ -272,9 +222,8 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
         )}
       </nav>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-slate-700/60 flex items-center gap-2">
-        {/* Theme toggle */}
+      {/* Footer — theme toggle only */}
+      <div className="p-3 border-t border-slate-700/60">
         <button
           type="button"
           onClick={toggleTheme}
@@ -283,20 +232,6 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
         >
           {theme === "dark" ? <SunIcon /> : <MoonIcon />}
         </button>
-
-        {authed && (
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-2 flex-1 px-2 py-2 rounded-md text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Log out
-          </button>
-        )}
       </div>
     </aside>
   );

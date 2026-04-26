@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { getEvaluation, sendFollowUp } from "../api/endpoints";
+import { sendFollowUp } from "../api/endpoints";
+import { getEvaluationById } from "./EvaluatePage";
 import type { EvaluationOut } from "../api/types";
 import ClaimRow from "../components/ClaimRow";
 import TrustGauge from "../components/TrustGauge";
@@ -45,9 +46,12 @@ export default function ResultsPage() {
 
   useEffect(() => {
     if (prefetched || !id) return;
-    getEvaluation(Number(id))
-      .then(setData)
-      .catch(() => setError("Unable to load this evaluation. Login may be required."));
+    const stored = getEvaluationById(id);
+    if (stored) {
+      setData(stored);
+    } else {
+      setError("Evaluation not found. It may have been cleared from this device.");
+    }
   }, [id, prefetched]);
 
   // Restore persisted chat — always reset messages when id changes
@@ -78,7 +82,13 @@ export default function ResultsPage() {
     setMessages((m) => [...m, { role: "user", text: q }]);
     setChatLoading(true);
     try {
-      const res = await sendFollowUp(data.id, q);
+      const res = await sendFollowUp(
+        q,
+        data.question,
+        data.ai_answer,
+        data.corrected_answer,
+        data.claims,
+      );
       setMessages((m) => [...m, { role: "assistant", text: res.answer }]);
     } catch {
       setMessages((m) => [...m, { role: "assistant", text: "Sorry, could not get an answer. Please try again." }]);
