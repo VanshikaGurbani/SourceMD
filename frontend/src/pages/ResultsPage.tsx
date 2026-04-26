@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { sendFollowUp } from "../api/endpoints";
-import { getEvaluationById } from "./EvaluatePage";
+import { getEvaluation, sendFollowUp } from "../api/endpoints";
+import { getEvaluationById, saveEvaluation } from "./EvaluatePage";
 import type { EvaluationOut } from "../api/types";
 import ClaimRow from "../components/ClaimRow";
 import TrustGauge from "../components/TrustGauge";
@@ -46,12 +46,26 @@ export default function ResultsPage() {
 
   useEffect(() => {
     if (prefetched || !id) return;
-    const stored = getEvaluationById(id);
-    if (stored) {
-      setData(stored);
-    } else {
-      setError("Evaluation not found. It may have been cleared from this device.");
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) {
+      setError("Invalid evaluation ID.");
+      return;
     }
+    // Try localStorage cache first for instant load
+    const cached = getEvaluationById(numericId);
+    if (cached) {
+      setData(cached);
+      return;
+    }
+    // Fall back to fetching from the server
+    getEvaluation(numericId)
+      .then((result) => {
+        saveEvaluation(result); // cache locally for next visit
+        setData(result);
+      })
+      .catch(() => {
+        setError("Evaluation not found. It may have been cleared.");
+      });
   }, [id, prefetched]);
 
   // Restore persisted chat — always reset messages when id changes

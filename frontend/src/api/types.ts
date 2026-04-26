@@ -20,7 +20,7 @@ export interface ClaimOut {
 }
 
 export interface EvaluationOut {
-  id: string;
+  id: number;
   question: string;
   ai_answer: string;
   trust_score: number;
@@ -33,7 +33,7 @@ export interface EvaluationOut {
 }
 
 export interface EvaluationListItem {
-  id: string;
+  id: number;
   question: string;
   trust_score: number;
   created_at: string;

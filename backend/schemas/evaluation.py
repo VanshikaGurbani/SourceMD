@@ -34,11 +34,14 @@ class ClaimOut(BaseModel):
     rationale: str
     sources: list[dict[str, Any]]
 
+    class Config:
+        from_attributes = True
+
 
 class EvaluationOut(BaseModel):
-    """Full trust report for one evaluation. No DB row — returned directly."""
+    """Full trust report for one evaluation."""
 
-    id: str  # client-usable UUID string
+    id: int
     question: str
     ai_answer: str
     trust_score: float
@@ -49,11 +52,14 @@ class EvaluationOut(BaseModel):
     created_at: datetime
     claims: list[ClaimOut]
 
+    class Config:
+        from_attributes = True
+
 
 class EvaluationListItem(BaseModel):
     """Compact row for the local history list."""
 
-    id: str
+    id: int
     question: str
     trust_score: float
     created_at: str

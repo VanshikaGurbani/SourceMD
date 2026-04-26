@@ -76,17 +76,17 @@ function MoonIcon() {
 
 export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [history, setHistory] = useState<EvaluationListItem[]>([]);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggle: toggleTheme } = useTheme();
 
-  const match = location.pathname.match(/^\/results\/(.+)$/);
-  const activeId = match ? match[1] : null;
+  const match = location.pathname.match(/^\/results\/(\d+)$/);
+  const activeId = match ? parseInt(match[1], 10) : null;
 
   // Reload history from localStorage whenever route changes
   useEffect(() => {
@@ -103,7 +103,7 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
     setDeletingId(null);
   }
 
-  function commitRename(id: string) {
+  function commitRename(id: number) {
     const trimmed = renameValue.trim();
     if (trimmed) {
       renameEvaluation(id, trimmed);
@@ -112,12 +112,12 @@ export default function EvalSidebar({ onNavigate }: { onNavigate?: () => void })
     setRenamingId(null);
   }
 
-  function handleRenameKey(e: KeyboardEvent, id: string) {
+  function handleRenameKey(e: KeyboardEvent, id: number) {
     if (e.key === "Enter") commitRename(id);
     if (e.key === "Escape") setRenamingId(null);
   }
 
-  function confirmDelete(id: string) {
+  function confirmDelete(id: number) {
     deleteEvaluationById(id);
     setHistory(getHistoryIndex());
     setDeletingId(null);

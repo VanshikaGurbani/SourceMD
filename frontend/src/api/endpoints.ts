@@ -12,6 +12,11 @@ export async function evaluate(
   return data;
 }
 
+export async function getEvaluation(id: number): Promise<EvaluationOut> {
+  const { data } = await apiClient.get<EvaluationOut>(`/history/${id}`);
+  return data;
+}
+
 export async function sendFollowUp(
   question: string,
   originalQuestion: string,

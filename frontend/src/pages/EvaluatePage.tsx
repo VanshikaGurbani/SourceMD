@@ -4,10 +4,10 @@ import { evaluate } from "../api/endpoints";
 import type { EvaluationListItem, EvaluationOut } from "../api/types";
 
 const HISTORY_KEY = "sourcemd_history";
-const EVAL_KEY = (id: string) => `sourcemd_eval_${id}`;
+const EVAL_KEY = (id: number) => `sourcemd_eval_${id}`;
 
 export function saveEvaluation(result: EvaluationOut): void {
-  // Store full result
+  // Store full result for offline/cached access
   localStorage.setItem(EVAL_KEY(result.id), JSON.stringify(result));
   // Update history index
   const existing: EvaluationListItem[] = getHistoryIndex();
@@ -28,7 +28,7 @@ export function getHistoryIndex(): EvaluationListItem[] {
   }
 }
 
-export function getEvaluationById(id: string): EvaluationOut | null {
+export function getEvaluationById(id: number): EvaluationOut | null {
   try {
     const raw = localStorage.getItem(EVAL_KEY(id));
     return raw ? JSON.parse(raw) : null;
@@ -37,19 +37,19 @@ export function getEvaluationById(id: string): EvaluationOut | null {
   }
 }
 
-export function deleteEvaluationById(id: string): void {
+export function deleteEvaluationById(id: number): void {
   localStorage.removeItem(EVAL_KEY(id));
   localStorage.removeItem(`sourcemd_chat_${id}`);
   const updated = getHistoryIndex().filter((item) => item.id !== id);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
 }
 
-export function renameEvaluation(id: string, name: string): void {
+export function renameEvaluation(id: number, name: string): void {
   const history = getHistoryIndex().map((item) =>
     item.id === id ? { ...item, question: name } : item
   );
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  // Also update the full eval
+  // Also update the cached full eval
   const full = getEvaluationById(id);
   if (full) {
     localStorage.setItem(EVAL_KEY(id), JSON.stringify({ ...full, question: name }));
