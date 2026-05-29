@@ -11,9 +11,17 @@ from backend.config import get_settings
 
 @lru_cache(maxsize=1)
 def get_chroma_client() -> chromadb.HttpClient:
-    """Return a cached ChromaDB HTTP client configured from settings."""
+    """Return a cached ChromaDB HTTP client configured from settings.
+
+    Uses SSL automatically when port is 443 (Render / production deployments).
+    """
     settings = get_settings()
-    return chromadb.HttpClient(host=settings.CHROMA_HOST, port=settings.CHROMA_PORT)
+    ssl = settings.CHROMA_PORT == 443
+    return chromadb.HttpClient(
+        host=settings.CHROMA_HOST,
+        port=settings.CHROMA_PORT,
+        ssl=ssl,
+    )
 
 
 def get_guidelines_collection() -> Collection:
