@@ -1,8 +1,6 @@
 """FastAPI application entrypoint for SourceMD."""
 from __future__ import annotations
 
-import asyncio
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,30 +11,10 @@ from backend.api.routes import followup as followup_routes
 from backend.api.routes import history as history_routes
 from backend.config import get_settings
 
-logger = logging.getLogger(__name__)
-
-
-def _maybe_ingest() -> None:
-    """Run ingestion if the ChromaDB guidelines collection is empty."""
-    try:
-        from backend.agents.chroma_client import get_guidelines_collection
-        collection = get_guidelines_collection()
-        count = collection.count()
-        if count == 0:
-            logger.info("ChromaDB collection is empty — running ingestion...")
-            from backend.ingestion.ingest import main as ingest_main
-            ingest_main()
-            logger.info("Ingestion complete.")
-        else:
-            logger.info("ChromaDB collection has %d chunks — skipping ingestion.", count)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Ingestion check failed (non-fatal): %s", exc)
-
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Application lifespan hook — auto-ingest if ChromaDB is empty."""
-    await asyncio.get_event_loop().run_in_executor(None, _maybe_ingest)
+    """Application lifespan hook."""
     yield
 
 
