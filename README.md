@@ -118,9 +118,27 @@ sourcemd/
 │   │       ├── ResultsPage.tsx   Full trust report with follow-up chat
 │   │       └── HistoryPage.tsx
 │   └── tailwind.config.js
-├── docker-compose.yml
-└── railway.toml
+└── docker-compose.yml
 ```
+
+---
+
+## Deployment
+
+The live app runs entirely on free tiers:
+
+| Piece | Host | Notes |
+|---|---|---|
+| Frontend | Vercel | Set `VITE_API_URL` to the backend URL. `frontend/vercel.json` rewrites all routes to `index.html`. |
+| Backend | Render (Docker web service) | Dockerfile path `./backend/Dockerfile`, build context `.` (repo root), port 8080. |
+| Vector store | Render (ChromaDB image) | Reached over HTTPS, so set `CHROMA_PORT=443`. |
+| Database | Neon (serverless PostgreSQL) | Tables are created on startup, so no migration step is needed. |
+
+Backend environment variables: `DATABASE_URL` (Neon connection string with `sslmode=require`), `CHROMA_HOST`, `CHROMA_PORT`, `FRONTEND_ORIGIN`, `GROQ_API_KEY`, `ANTHROPIC_API_KEY`, `TAVILY_API_KEY`, `JWT_SECRET`.
+
+Notes:
+- Ingestion is too memory-hungry for a 512 MB instance. Run it locally in the compose backend container with `CHROMA_HOST` and `CHROMA_PORT` overridden to point at the remote ChromaDB.
+- Free Render services sleep after 15 minutes idle. The first request afterwards can take 30 to 60 seconds, and the backend retries its ChromaDB connection with backoff while the service wakes.
 
 ---
 

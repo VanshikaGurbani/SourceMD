@@ -30,7 +30,7 @@ dist-ssr/
 
 # Project
 backend/chroma_data/
-# Allow the guideline PDFs so they ship with the image on Railway
+# Allow the guideline PDFs so they ship with the image on Render
 !backend/ingestion/cache/
 backend/ingestion/cache/*
 !backend/ingestion/cache/*.pdf
