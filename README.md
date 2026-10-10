@@ -65,12 +65,12 @@ User submits question + AI answer
 |---|---|
 | LLM | Groq `llama-3.3-70b-versatile` (primary) with Anthropic Claude as fallback |
 | Agent framework | LangGraph `StateGraph` — 3-node linear pipeline |
-| Embeddings | `sentence-transformers/all-MiniLM-L6-v2` (384-dim, CPU) |
+| Embeddings | `all-MiniLM-L6-v2` (384-dim) served via FastEmbed (ONNX, CPU) |
 | Vector store | ChromaDB over HTTP, cosine similarity, ~844 guideline chunks |
 | Web search | Tavily API (trusted medical domains only) |
 | Backend | FastAPI, SQLAlchemy 2.0, PostgreSQL |
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, Recharts |
-| Infrastructure | Railway (backend + DB + ChromaDB), Vercel (frontend) |
+| Infrastructure | Render (backend + ChromaDB), Neon (PostgreSQL), Vercel (frontend) |
 
 ---
 
@@ -89,9 +89,9 @@ sourcemd/
 │   │   ├── graph.py              LangGraph StateGraph wiring
 │   │   ├── state.py              PipelineState, ScoredClaim TypedDicts
 │   │   ├── llm.py                Groq/Anthropic client with JSON extractor
-│   │   ├── embeddings.py         SentenceTransformer singleton
-│   │   ├── chroma_client.py      ChromaDB HTTP client
-│   │   ├── ragas_eval.py         Hallucination rate and source coverage metrics
+│   │   ├── embeddings.py         FastEmbed (ONNX) singleton
+│   │   ├── chroma_client.py      ChromaDB HTTP client with cold-start retry
+│   │   ├── quality_metrics.py    Hallucination rate and source coverage metrics
 │   │   └── nodes/
 │   │       ├── claim_extractor.py
 │   │       ├── retriever.py      ChromaDB + Tavily augmentation
@@ -136,7 +136,7 @@ sourcemd/
 ### Example
 
 ```bash
-curl -X POST https://sourcemd-production.up.railway.app/evaluate \
+curl -X POST https://sourcemd-backend.onrender.com/evaluate \
   -H "Content-Type: application/json" \
   -d '{
     "question": "What is the first-line drug for type 2 diabetes?",

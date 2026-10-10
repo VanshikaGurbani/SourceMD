@@ -1,4 +1,4 @@
-"""LLM client helpers used by the agent nodes and RAGAS wrapper.
+"""LLM client helpers used by the agent nodes.
 
 Supports two backends selected at startup:
 - Groq  (free tier)  — used when GROQ_API_KEY is set in .env

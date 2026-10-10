@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.agents.graph import run_pipeline
-from backend.agents.ragas_eval import evaluate_with_ragas
+from backend.agents.quality_metrics import compute_quality_metrics
 from backend.db.base import get_db
 from backend.db.models import Claim, Evaluation
 from backend.schemas.evaluation import ClaimOut, EvaluateRequest, EvaluationOut
@@ -30,15 +30,16 @@ def evaluate(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     scored = result.get("scored_claims", [])
-    ragas_scores = evaluate_with_ragas(payload.question, payload.ai_answer, scored)
+    metrics = compute_quality_metrics(scored)
 
     eval_row = Evaluation(
         user_id=None,
         question=payload.question,
         ai_answer=payload.ai_answer,
         trust_score=float(result.get("trust_score", 0.0)),
-        ragas_faithfulness=ragas_scores.get("faithfulness"),
-        ragas_context_precision=ragas_scores.get("context_precision"),
+        # Columns keep their legacy "ragas_" names to avoid a schema migration.
+        ragas_faithfulness=metrics.get("hallucination_rate"),
+        ragas_context_precision=metrics.get("source_coverage"),
         corrected_answer=result.get("corrected_answer", ""),
         follow_up_questions=result.get("follow_up_questions", []),
     )
