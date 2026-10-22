@@ -1,5 +1,5 @@
 """Password hashing and JWT token helpers."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
@@ -27,7 +27,7 @@ def create_access_token(subject: str | int, extra: dict[str, Any] | None = None)
     based on JWT_EXPIRE_MINUTES from settings. Any ``extra`` keys are merged
     into the payload verbatim.
     """
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     payload: dict[str, Any] = {
         "sub": str(subject),
         "iat": int(now.timestamp()),

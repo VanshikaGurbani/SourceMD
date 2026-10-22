@@ -1,4 +1,4 @@
-﻿# Labelled claim set
+# Labelled claim set
 
 `answers.jsonl`: one short AI-style answer per line with its gold claims.
 

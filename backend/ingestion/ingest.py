@@ -120,7 +120,7 @@ def _chunk_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP)
 
 def _chunk_id(doc: str, page: int, chunk_index: int, text: str) -> str:
     """Return a deterministic SHA-1 based id for a chunk."""
-    payload = f"{doc}|{page}|{chunk_index}|{text[:64]}".encode("utf-8")
+    payload = f"{doc}|{page}|{chunk_index}|{text[:64]}".encode()
     return hashlib.sha1(payload).hexdigest()
 
 

@@ -90,7 +90,7 @@ def retrieve_passages(state: PipelineState) -> PipelineState:
     vectors = embed_texts(claims)
 
     out: dict[str, list[RetrievedPassage]] = {}
-    for claim, vector in zip(claims, vectors):
+    for claim, vector in zip(claims, vectors, strict=True):
         result = collection.query(
             query_embeddings=[vector],
             n_results=TOP_K,
@@ -101,7 +101,7 @@ def retrieve_passages(state: PipelineState) -> PipelineState:
         metas = (result.get("metadatas") or [[]])[0]
         dists = (result.get("distances") or [[]])[0]
 
-        for text, meta, dist in zip(docs, metas, dists):
+        for text, meta, dist in zip(docs, metas, dists, strict=False):
             meta = meta or {}
             similarity = max(0.0, 1.0 - float(dist))
             passages.append(
@@ -128,3 +128,4 @@ def retrieve_passages(state: PipelineState) -> PipelineState:
         out[claim] = passages
 
     return {"retrieved": out}
+

@@ -30,7 +30,7 @@ class User(Base):
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
 
-    evaluations: Mapped[list["Evaluation"]] = relationship(
+    evaluations: Mapped[list[Evaluation]] = relationship(
         "Evaluation", back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -56,7 +56,7 @@ class Evaluation(Base):
     )
 
     user: Mapped[User | None] = relationship("User", back_populates="evaluations")
-    claims: Mapped[list["Claim"]] = relationship(
+    claims: Mapped[list[Claim]] = relationship(
         "Claim",
         back_populates="evaluation",
         cascade="all, delete-orphan",

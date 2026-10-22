@@ -1,4 +1,4 @@
-﻿-r requirements.txt
+-r requirements.txt
 
 # Evaluation harness
 rank-bm25==0.2.2

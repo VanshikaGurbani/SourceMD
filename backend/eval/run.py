@@ -204,6 +204,11 @@ def summarize(run: ConfigRun, answers: list[GoldAnswer]) -> dict:
     return out
 
 
+def _mean_ci(values: np.ndarray) -> tuple[float, float]:
+    """Bootstrap CI of the mean of a 0/1 array."""
+    return M.bootstrap_ci(len(values), lambda idx: float(values[idx].mean()))
+
+
 def retrieval_table(answers: list[GoldAnswer], retriever) -> dict[str, dict]:
     """Offline retrieval hit@3 per mode over claims that carry gold evidence."""
     claims = [c for a in answers for c in a.claims if c.evidence is not None]
@@ -213,7 +218,7 @@ def retrieval_table(answers: list[GoldAnswer], retriever) -> dict[str, dict]:
         out[mode] = {
             "n": len(hits),
             "hit3": float(hits.mean()) if len(hits) else float("nan"),
-            "ci": M.bootstrap_ci(len(hits), lambda idx, h=hits: float(h[idx].mean())),
+            "ci": _mean_ci(hits),
         }
     return out
 

@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.db.base import get_db
-from backend.db.models import Claim, Evaluation
-from backend.schemas.evaluation import ClaimOut, EvaluationListItem, EvaluationOut
+from backend.db.models import Evaluation
+from backend.schemas.evaluation import ClaimOut, EvaluationOut
 
 router = APIRouter(prefix="/history", tags=["history"])
 
