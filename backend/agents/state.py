@@ -1,7 +1,7 @@
 """Shared state object that flows through the LangGraph pipeline."""
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 
 class RetrievedPassage(TypedDict):
@@ -24,6 +24,8 @@ class ScoredClaim(TypedDict):
     confidence: float
     rationale: str
     sources: list[RetrievedPassage]
+    cited_passage: NotRequired[int | None]  # 1-based index into ``sources``
+    quote: NotRequired[str]  # text the scorer says it copied from that passage
 
 
 class PipelineState(TypedDict, total=False):

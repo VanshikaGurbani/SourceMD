@@ -1,6 +1,7 @@
 """LangGraph node: for each claim retrieve passages from ChromaDB and optionally Tavily."""
 from __future__ import annotations
 
+from backend.agents.call_cache import CacheMiss, cache_mode, cached_call
 from backend.agents.chroma_client import get_guidelines_collection
 from backend.agents.embeddings import embed_texts
 from backend.agents.state import PipelineState, RetrievedPassage
@@ -32,16 +33,26 @@ def _web_search(claim: str) -> list[RetrievedPassage]:
     Each returned passage has ``page=0``, ``chunk=-1`` to signal a web result.
     """
     settings = get_settings()
-    if not settings.TAVILY_API_KEY:
+    if not settings.TAVILY_API_KEY and cache_mode() not in ("replay", "count"):
         return []
-    try:
+    query = f"medical guideline {claim}"
+
+    def _search() -> dict:
         from tavily import TavilyClient  # noqa: WPS433
         client = TavilyClient(api_key=settings.TAVILY_API_KEY)
-        response = client.search(
-            query=f"medical guideline {claim}",
+        return client.search(
+            query=query,
             search_depth="basic",
             include_domains=TRUSTED_DOMAINS,
             max_results=2,
+        )
+
+    try:
+        response = cached_call(
+            "tavily",
+            {"query": query, "domains": TRUSTED_DOMAINS, "max_results": 2},
+            _search,
+            placeholder={"results": []},
         )
         passages: list[RetrievedPassage] = []
         for r in response.get("results", []):
@@ -58,6 +69,8 @@ def _web_search(claim: str) -> list[RetrievedPassage]:
                 )
             )
         return passages
+    except CacheMiss:
+        raise  # a replay gap must be visible, not silently "no web results"
     except Exception:  # noqa: BLE001
         return []
 

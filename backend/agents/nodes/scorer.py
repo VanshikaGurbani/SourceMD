@@ -27,7 +27,9 @@ Task: classify the claim against the passages and return STRICT JSON:
 {{
   "verdict": "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED",
   "confidence": number between 0 and 1,
-  "rationale": "one or two sentences citing the passage(s) that drove the decision"
+  "rationale": "one or two sentences citing the passage(s) that drove the decision",
+  "passage": number of the single passage [n] that drove the decision, or null,
+  "quote": "the exact sentence copied verbatim from that passage, or an empty string"
 }}
 
 Rules:
@@ -35,6 +37,30 @@ Rules:
 - "CONTRADICTED" = passages clearly state the opposite.
 - "UNSUPPORTED" = passages are silent or only tangentially related.
 - Confidence should reflect how strong the evidence is, not how plausible the claim sounds.
+- "quote" must be copied character for character from the passage; never paraphrase it.
+- Return ONLY the JSON object.
+"""
+
+_NO_RETRIEVAL_SYSTEM = (
+    "You are a careful medical fact-checker. Decide whether a claim is SUPPORTED, "
+    "UNSUPPORTED, or CONTRADICTED using only your own medical knowledge of current "
+    "clinical guidelines."
+)
+
+_NO_RETRIEVAL_PROMPT = """Claim: {claim}
+
+No reference passages are provided. Classify the claim against current clinical guidelines
+from your own knowledge and return STRICT JSON:
+{{
+  "verdict": "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED",
+  "confidence": number between 0 and 1,
+  "rationale": "one or two sentences"
+}}
+
+Rules:
+- "SUPPORTED" = guidelines affirm the claim.
+- "CONTRADICTED" = guidelines state the opposite.
+- "UNSUPPORTED" = guidelines are silent on it, or you are not sure.
 - Return ONLY the JSON object.
 """
 
@@ -120,7 +146,7 @@ def _aggregate_trust_score(scored: list[ScoredClaim]) -> float:
     """Compute the 0-100 aggregate trust score from per-claim verdicts.
 
     Each claim contributes a fixed amount based on its verdict:
-    - SUPPORTED:    uses confidence directly (0.0–1.0), rewarding high-confidence support
+    - SUPPORTED:    uses confidence directly (0.0-1.0), rewarding high-confidence support
     - UNSUPPORTED:  fixed 0.3 — always penalises the score regardless of confidence,
                     preventing 0%-confident UNSUPPORTED claims from being silently ignored
     - CONTRADICTED: fixed 0.0 — maximum penalty
@@ -143,6 +169,78 @@ def _aggregate_trust_score(scored: list[ScoredClaim]) -> float:
     return round((total / len(scored)) * 100.0, 2)
 
 
+def parse_verdict(response: str) -> dict[str, object]:
+    """Normalise a scorer LLM response into verdict/confidence/rationale/citation.
+
+    Never raises: unparseable output or an unknown verdict becomes UNSUPPORTED
+    with confidence 0, so one bad response cannot crash the whole evaluation.
+    ``passage`` is the 1-based index of the cited passage (or None) and
+    ``quote`` the text the model claims to have copied from it.
+    """
+    try:
+        data = extract_json(response)
+    except ValueError:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+
+    verdict = str(data.get("verdict", "UNSUPPORTED")).upper()
+    if verdict not in _VERDICTS:
+        verdict = "UNSUPPORTED"
+    try:
+        confidence = float(data.get("confidence", 0.0))
+    except (TypeError, ValueError):
+        confidence = 0.0
+    confidence = round(max(0.0, min(1.0, confidence)), 4)
+
+    passage: int | None
+    try:
+        passage = int(data["passage"]) if data.get("passage") is not None else None
+    except (TypeError, ValueError):
+        passage = None
+
+    return {
+        "verdict": verdict,
+        "confidence": confidence,
+        "rationale": str(data.get("rationale", "")).strip(),
+        "passage": passage,
+        "quote": str(data.get("quote") or "").strip(),
+    }
+
+
+def score_claim(
+    claim: str,
+    passages: list[RetrievedPassage],
+    *,
+    provider: str | None = None,
+    use_retrieval_prompt: bool = True,
+) -> ScoredClaim:
+    """Score one claim against its passages with a single LLM call.
+
+    ``use_retrieval_prompt=False`` is the "LLM only" ablation: no passages are
+    shown and the model is told to judge from its own knowledge.
+    """
+    if use_retrieval_prompt:
+        prompt = _SCORER_PROMPT.format(claim=claim, passages=_format_passages(passages))
+        system = _SCORER_SYSTEM
+    else:
+        prompt = _NO_RETRIEVAL_PROMPT.format(claim=claim)
+        system = _NO_RETRIEVAL_SYSTEM
+    response = claude_complete(
+        prompt, system=system, max_tokens=512, temperature=0.0, provider=provider
+    )
+    parsed = parse_verdict(response)
+    return ScoredClaim(
+        text=claim,
+        verdict=str(parsed["verdict"]),
+        confidence=float(parsed["confidence"]),  # type: ignore[arg-type]
+        rationale=str(parsed["rationale"]),
+        sources=passages,
+        cited_passage=parsed["passage"],  # type: ignore[typeddict-item]
+        quote=str(parsed["quote"]),
+    )
+
+
 def score_claims(state: PipelineState) -> PipelineState:
     """Score each claim and synthesize a corrected answer.
 
@@ -154,40 +252,7 @@ def score_claims(state: PipelineState) -> PipelineState:
     scored: list[ScoredClaim] = []
 
     for claim in claims:
-        passages = retrieved.get(claim, [])
-        prompt = _SCORER_PROMPT.format(
-            claim=claim, passages=_format_passages(passages)
-        )
-        response = claude_complete(
-            prompt, system=_SCORER_SYSTEM, max_tokens=512, temperature=0.0
-        )
-        try:
-            data = extract_json(response)
-        except ValueError:
-            data = {}
-
-        if not isinstance(data, dict):
-            data = {}
-
-        verdict = str(data.get("verdict", "UNSUPPORTED")).upper()
-        if verdict not in _VERDICTS:
-            verdict = "UNSUPPORTED"
-        try:
-            confidence = float(data.get("confidence", 0.0))
-        except (TypeError, ValueError):
-            confidence = 0.0
-        confidence = max(0.0, min(1.0, confidence))
-        rationale = str(data.get("rationale", "")).strip()
-
-        scored.append(
-            ScoredClaim(
-                text=claim,
-                verdict=verdict,
-                confidence=round(confidence, 4),
-                rationale=rationale,
-                sources=passages,
-            )
-        )
+        scored.append(score_claim(claim, retrieved.get(claim, [])))
 
     trust_score = _aggregate_trust_score(scored)
 

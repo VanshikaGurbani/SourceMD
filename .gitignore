@@ -39,3 +39,8 @@ backend/ingestion/cache/*
 
 # Secrets — never commit the real .env
 backend/.env
+
+# Eval: rebuilt corpus index (recorded API calls in calls.jsonl ARE committed)
+backend/eval/cache/corpus_*
+.venv/
+
