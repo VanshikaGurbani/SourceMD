@@ -44,3 +44,4 @@ backend/.env
 backend/eval/cache/corpus_*
 .venv/
 
+*.tsbuildinfo
