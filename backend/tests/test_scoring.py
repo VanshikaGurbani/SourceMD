@@ -92,11 +92,13 @@ class TestReplayedScoring:
         assert out["confidence"] == 0.9
         assert out["cited_passage"] == 1
         assert "metformin" in out["quote"]
+        assert out["citation_verified"] is True  # quote literally appears in passage 1
 
     def test_garbage_recorded_response_degrades_to_unsupported(self, replay_llm):
         out = score_claim("Some claim.", [PASSAGE])
         assert out["verdict"] == "UNSUPPORTED"
         assert out["confidence"] == 0.0
+        assert out["citation_verified"] is False
 
     def test_full_scoring_node_replays_all_five_calls(self, replay_llm):
         state = {

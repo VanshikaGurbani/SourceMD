@@ -26,6 +26,7 @@ class ScoredClaim(TypedDict):
     sources: list[RetrievedPassage]
     cited_passage: NotRequired[int | None]  # 1-based index into ``sources``
     quote: NotRequired[str]  # text the scorer says it copied from that passage
+    citation_verified: NotRequired[bool]  # quote literally appears in the cited passage
 
 
 class PipelineState(TypedDict, total=False):

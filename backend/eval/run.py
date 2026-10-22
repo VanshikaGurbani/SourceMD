@@ -62,10 +62,11 @@ CONFIGS: dict[str, Config] = {
         Config("corpus_claude", "dense", "anthropic", "Dense top-3 over corpus; Claude"),
         Config("bm25_groq", "bm25", "groq", "BM25 top-3; Llama 3.3 70B"),
         Config("hybrid_groq", "hybrid", "groq", "Hybrid BM25+dense (RRF) top-3; Llama 3.3 70B"),
+        Config("hybrid_rerank_groq", "hybrid_rerank", "groq", "Hybrid candidates re-scored by a cross-encoder, top-3; Llama 3.3 70B"),
     ]
 }
 DEFAULT_CONFIGS = ["llm_only_groq", "corpus_groq", "corpus_web_groq", "corpus_claude"]
-RETRIEVAL_REPORTED = ["dense", "bm25", "hybrid"]
+RETRIEVAL_REPORTED = ["dense", "bm25", "hybrid", "hybrid_rerank"]
 
 
 @dataclass
@@ -214,7 +215,11 @@ def retrieval_table(answers: list[GoldAnswer], retriever) -> dict[str, dict]:
     claims = [c for a in answers for c in a.claims if c.evidence is not None]
     out: dict[str, dict] = {}
     for mode in RETRIEVAL_REPORTED:
-        hits = np.array([retrieval_hit(c, retriever.retrieve(c.text, mode)) for c in claims], dtype=float)
+        try:
+            hits = np.array([retrieval_hit(c, retriever.retrieve(c.text, mode)) for c in claims], dtype=float)
+        except ImportError:
+            out[mode] = {"n": 0, "hit3": float("nan"), "ci": (float("nan"), float("nan")), "note": "not run (needs fastembed >= 0.4)"}
+            continue
         out[mode] = {
             "n": len(hits),
             "hit3": float(hits.mean()) if len(hits) else float("nan"),
@@ -294,7 +299,7 @@ def render_report(
               f"contains >= {int(HIT_COVERAGE * 100)}% of the gold quote's tokens.", "",
               "| Mode | Claims | hit@3 |", "|---|---|---|"]
     for mode, r in retr.items():
-        lines.append(f"| {mode} | {r['n']} | {M.fmt_ci(r['hit3'], r['ci'])} |")
+        lines.append(f"| {mode} | {r['n']} | {r.get('note') or M.fmt_ci(r['hit3'], r['ci'])} |")
 
     lines += ["", "## Details per config", ""]
     for run in runs:

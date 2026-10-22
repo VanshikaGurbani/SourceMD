@@ -1,6 +1,7 @@
 """LangGraph node: score each claim and synthesize a corrected answer."""
 from __future__ import annotations
 
+from backend.agents.citations import verify_citation
 from backend.agents.llm import claude_complete, extract_json
 from backend.agents.state import PipelineState, RetrievedPassage, ScoredClaim
 
@@ -238,6 +239,9 @@ def score_claim(
         sources=passages,
         cited_passage=parsed["passage"],  # type: ignore[typeddict-item]
         quote=str(parsed["quote"]),
+        citation_verified=verify_citation(
+            str(parsed["quote"]), parsed["passage"], passages  # type: ignore[arg-type]
+        ),
     )
 
 

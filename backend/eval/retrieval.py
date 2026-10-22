@@ -9,6 +9,7 @@ All modes return production-shaped ``RetrievedPassage`` dicts, capped at
 - ``hybrid``     reciprocal-rank fusion of dense and BM25
 - ``dense_web``  dense, plus Tavily when the best similarity < WEB_AUGMENT_THRESHOLD
                  (production behaviour)
+- ``hybrid_rerank``  hybrid candidates re-scored by an ONNX cross-encoder (needs fastembed >= 0.4)
 """
 from __future__ import annotations
 
@@ -23,11 +24,35 @@ from backend.agents.nodes.retriever import TOP_K, WEB_AUGMENT_THRESHOLD, _web_se
 from backend.agents.state import RetrievedPassage
 from backend.eval.corpus import Chunk, CorpusIndex
 
-MODES = ("none", "dense", "bm25", "hybrid", "dense_web")
+MODES = ("none", "dense", "bm25", "hybrid", "dense_web", "hybrid_rerank")
 RRF_K = 60  # standard reciprocal-rank-fusion constant
 CANDIDATES = 20  # depth each ranker contributes to the fusion
+RERANK_POOL = 10  # fused candidates handed to the cross-encoder
+RERANK_MODEL = "Xenova/ms-marco-MiniLM-L-6-v2"
 
 _TOKEN = re.compile(r"[a-z0-9]+")
+
+
+class _CrossEncoder:
+    """Thin wrapper over fastembed's ONNX cross-encoder (needs fastembed >= 0.4)."""
+
+    def __init__(self) -> None:
+        from fastembed.rerank.cross_encoder import TextCrossEncoder
+
+        self._model = TextCrossEncoder(model_name=RERANK_MODEL)
+
+    def rerank(self, query: str, docs: list[str]) -> list[float]:
+        return [float(s) for s in self._model.rerank(query, docs)]
+
+
+_cross_encoder_instance: _CrossEncoder | None = None
+
+
+def _cross_encoder() -> _CrossEncoder:
+    global _cross_encoder_instance
+    if _cross_encoder_instance is None:
+        _cross_encoder_instance = _CrossEncoder()
+    return _cross_encoder_instance
 
 
 def tokenize(text: str) -> list[str]:
@@ -100,4 +125,10 @@ class EvalRetriever:
             fused = rrf_fuse([dense_order, self._bm25_rank(claim)])
             # Keep the true cosine as the score so downstream thresholds stay meaningful.
             return [_passage(chunks[i], max(0.0, float(sims[i]))) for i, _ in fused[:TOP_K]]
+        if mode == "hybrid_rerank":
+            dense_order, sims = self._dense_rank(claim)
+            pool = [i for i, _ in rrf_fuse([dense_order, self._bm25_rank(claim)])[:RERANK_POOL]]
+            rr_scores = _cross_encoder().rerank(claim, [chunks[i].text for i in pool])
+            ranked = sorted(zip(pool, rr_scores, strict=True), key=lambda t: t[1], reverse=True)[:TOP_K]
+            return [_passage(chunks[i], max(0.0, float(sims[i]))) for i, _ in ranked]
         raise ValueError(f"Unknown retrieval mode {mode!r}; choose from {MODES}")
