@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { evaluate } from "../api/endpoints";
+import { useServerStatus } from "../context/ServerStatusContext";
 import type { EvaluationListItem, EvaluationOut } from "../api/types";
 
 const HISTORY_KEY = "sourcemd_history";
@@ -62,6 +63,8 @@ export default function EvaluatePage() {
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { status } = useServerStatus();
+  const serverWaking = status === "waking";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -127,10 +130,10 @@ export default function EvaluatePage() {
         )}
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || serverWaking}
           className="px-4 py-2 rounded-md bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-700 dark:hover:bg-white disabled:opacity-60 font-medium"
         >
-          {loading ? "Evaluating…" : "Run evaluation"}
+          {loading ? "Evaluating…" : serverWaking ? "Waiting for server…" : "Run evaluation"}
         </button>
       </form>
     </div>
