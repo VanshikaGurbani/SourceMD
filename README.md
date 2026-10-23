@@ -63,7 +63,7 @@ User submits question + AI answer
 
 | Layer | Technology |
 |---|---|
-| LLM | Groq `llama-3.3-70b-versatile` (primary) with Anthropic Claude as fallback |
+| LLM | Groq `openai/gpt-oss-120b` (primary; set `GROQ_MODEL` to change) with optional Anthropic failover (`LLM_FAILOVER=true`) |
 | Agent framework | LangGraph `StateGraph` â€” 3-node linear pipeline |
 | Embeddings | `all-MiniLM-L6-v2` (384-dim) served via FastEmbed (ONNX, CPU) |
 | Vector store | ChromaDB over HTTP, cosine similarity, ~844 guideline chunks |
@@ -179,10 +179,18 @@ Out-of-corpus queries are handled by Tavily live web search against NIH, WHO, Pu
 
 ## Memory footprint (ONNX vs PyTorch embeddings)
 
-`scripts/bench_memory.py` loads `all-MiniLM-L6-v2` in a fresh subprocess, embeds 64 sentences, and reports the process's peak resident memory. Median of 5 runs after a warm-up (raw data: `docs/bench/memory.json`):
+`scripts/bench_memory.py` loads `all-MiniLM-L6-v2` in a fresh subprocess, embeds 64 sentences, and reports the process's peak resident memory. Median of 5 runs after a warm-up (raw data in `docs/bench/`):
 
-| Embedding stack | Peak RSS (MB) |
-|---|---|
+| Embedding stack | Linux container, Python 3.11 (peak RSS) | Windows 11 (peak RSS) |
+|---|---|---|
+| `sentence-transformers` + PyTorch 2.14 (CPU) | 526 MB | 498 MB |
+| FastEmbed 0.3.6 + ONNX Runtime 1.31 | 247 MB | 220 MB |
+| Reduction | **53%** | 56% |
+
+The Linux run (Docker `python:3.11-slim` on WSL2, both stacks on the same Python) is the closer proxy for Render. Limitations: it covers import + model load + one batch, not the whole FastAPI process, and it is not Render's own container. The figure "45%" that appeared in earlier project descriptions was not produced by anything in this repo; the measured figure is about 53%.
+
+Reproduce: `python scripts/bench_memory.py --python-torch <py with sentence-transformers> --python-onnx <py with fastembed>`.
+---|---|
 | `sentence-transformers` 5.1.1 + PyTorch 2.14 (CPU) | 498 |
 | FastEmbed 0.3.6 + ONNX Runtime 1.31 | 220 |
 

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # Groq (free alternative — used when GROQ_API_KEY is set)
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "openai/gpt-oss-120b"  # llama-3.3-70b-versatile is no longer served by Groq
 
     DATABASE_URL: str = "postgresql+psycopg2://sourcemd:sourcemd_dev_password@postgres:5432/sourcemd"
 

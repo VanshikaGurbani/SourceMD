@@ -1,7 +1,7 @@
 """Embedding helpers using FastEmbed (ONNX-based, low memory).
 
 FastEmbed runs the model through ONNX Runtime instead of PyTorch. Measured peak
-RSS of import + model load + one 64-text batch: ~220 MB vs ~498 MB for
+RSS of import + model load + one 64-text batch on Linux: ~247 MB vs ~526 MB for
 sentence-transformers (scripts/bench_memory.py, results in the README). That
 difference is what lets it fit in Render's 512 MB free tier.
 

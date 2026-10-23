@@ -9,6 +9,7 @@ import pytest
 # Must be set before backend.config / backend.db.base are imported anywhere.
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ["GROQ_API_KEY"] = "test-key-not-real"
+os.environ["GROQ_MODEL"] = "test-model"  # pinned so fixtures do not depend on the production default
 os.environ["ANTHROPIC_API_KEY"] = ""
 os.environ["TAVILY_API_KEY"] = ""
 os.environ["SOURCEMD_CALL_CACHE"] = "off"

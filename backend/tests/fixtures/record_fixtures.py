@@ -57,6 +57,7 @@ def record() -> None:
 
     # Same provider/model resolution as the test environment (see backend/tests/conftest.py).
     os.environ['GROQ_API_KEY'] = 'test-key-not-real'
+    os.environ['GROQ_MODEL'] = 'test-model'
     os.environ['ANTHROPIC_API_KEY'] = ''
     os.environ['SOURCEMD_CALL_CACHE'] = 'record'
     os.environ["SOURCEMD_CALL_CACHE_FILE"] = str(OUT)
