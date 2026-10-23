@@ -45,17 +45,17 @@ User submits question + AI answer
 
 ## Features
 
-- **Claim-level fact-checking** â€” answers are broken into atomic claims, each verified independently
-- **Real guideline citations** â€” evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
-- **Live web augmentation** â€” Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
-- **Trust score** â€” 0-100 aggregate metric weighted by claim verdicts and confidence
-- **Flagged-claim rate and Source Coverage** â€” two descriptive metrics computed directly from pipeline output. The flagged-claim rate is the share of claims the model itself labelled UNSUPPORTED or CONTRADICTED; it is **not** a measured hallucination rate or an accuracy figure (see [Evaluation](#evaluation) for measured accuracy)
-- **Corrected answer** â€” a rewritten, source-grounded version of the original AI answer with clickable citations
-- **Follow-up chat** â€” multi-turn Q&A grounded in retrieved guideline passages, persisted per evaluation
-- **Evaluation history sidebar** â€” ChatGPT-style sidebar grouped by date, with rename and delete
-- **Anonymous persistence** â€” evaluations saved to PostgreSQL without requiring an account; history lives in the browser, shareable by URL
-- **Light/dark theme** â€” persisted to localStorage
-- **Responsive** â€” works on mobile and desktop
+- **Claim-level fact-checking** — answers are broken into atomic claims, each verified independently
+- **Real guideline citations** — evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
+- **Live web augmentation** — Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
+- **Trust score** — 0-100 aggregate metric weighted by claim verdicts and confidence
+- **Flagged-claim rate and Source Coverage** — two metrics computed directly from pipeline output (the share of claims not marked SUPPORTED, and the share with a strong matching passage)
+- **Corrected answer** — a rewritten, source-grounded version of the original AI answer with clickable citations
+- **Follow-up chat** — multi-turn Q&A grounded in retrieved guideline passages, persisted per evaluation
+- **Evaluation history sidebar** — ChatGPT-style sidebar grouped by date, with rename and delete
+- **Anonymous persistence** — evaluations saved to PostgreSQL without requiring an account; history lives in the browser, shareable by URL
+- **Light/dark theme** — persisted to localStorage
+- **Responsive** — works on mobile and desktop
 
 ---
 
@@ -64,7 +64,7 @@ User submits question + AI answer
 | Layer | Technology |
 |---|---|
 | LLM | Groq `openai/gpt-oss-120b` (primary; set `GROQ_MODEL` to change) with optional Anthropic failover (`LLM_FAILOVER=true`) |
-| Agent framework | LangGraph `StateGraph` â€” 3-node linear pipeline |
+| Agent framework | LangGraph `StateGraph` — 3-node linear pipeline |
 | Embeddings | `all-MiniLM-L6-v2` (384-dim) served via FastEmbed (ONNX, CPU) |
 | Vector store | ChromaDB over HTTP, cosine similarity, ~844 guideline chunks |
 | Web search | Tavily API (trusted medical domains only) |
@@ -78,47 +78,47 @@ User submits question + AI answer
 
 ```
 sourcemd/
-â”œâ”€â”€ backend/
-â”‚   â”œâ”€â”€ main.py                   FastAPI app, CORS, router mounts
-â”‚   â”œâ”€â”€ config.py                 Pydantic settings from env vars
-â”‚   â”œâ”€â”€ api/routes/
-â”‚   â”‚   â”œâ”€â”€ evaluate.py           POST /evaluate
-â”‚   â”‚   â”œâ”€â”€ history.py            GET /history/{id}
-â”‚   â”‚   â””â”€â”€ followup.py           POST /follow-up
-â”‚   â”œâ”€â”€ agents/
-â”‚   â”‚   â”œâ”€â”€ graph.py              LangGraph StateGraph wiring
-â”‚   â”‚   â”œâ”€â”€ state.py              PipelineState, ScoredClaim TypedDicts
-â”‚   â”‚   â”œâ”€â”€ llm.py                Groq/Anthropic client with JSON extractor
-â”‚   â”‚   â”œâ”€â”€ embeddings.py         FastEmbed (ONNX) singleton
-â”‚   â”‚   â”œâ”€â”€ chroma_client.py      ChromaDB HTTP client with cold-start retry
-â”‚   â”‚   â”œâ”€â”€ quality_metrics.py    Flagged-claim rate and source coverage metrics
-â”‚   â”‚   â””â”€â”€ nodes/
-â”‚   â”‚       â”œâ”€â”€ claim_extractor.py
-â”‚   â”‚       â”œâ”€â”€ retriever.py      ChromaDB + Tavily augmentation
-â”‚   â”‚       â””â”€â”€ scorer.py         Verdict scoring, trust score, correction prompt
-â”‚   â”œâ”€â”€ ingestion/
-â”‚   â”‚   â”œâ”€â”€ sources.py            Guideline registry (name, url, tag)
-â”‚   â”‚   â”œâ”€â”€ ingest.py             Download, chunk, embed, upsert pipeline
-â”‚   â”‚   â””â”€â”€ cache/                PDF files committed to repo
-â”‚   â”œâ”€â”€ db/
-â”‚   â”‚   â”œâ”€â”€ base.py               SQLAlchemy engine and session
-â”‚   â”‚   â””â”€â”€ models.py             Evaluation, Claim
-â”‚   â””â”€â”€ schemas/                  Pydantic v2 request and response models
-â”œâ”€â”€ frontend/
-â”‚   â”œâ”€â”€ src/
-â”‚   â”‚   â”œâ”€â”€ api/                  Axios client and typed endpoint wrappers
-â”‚   â”‚   â”œâ”€â”€ context/              ThemeContext (light/dark)
-â”‚   â”‚   â”œâ”€â”€ components/
-â”‚   â”‚   â”‚   â”œâ”€â”€ EvalSidebar.tsx   History sidebar with rename and delete
-â”‚   â”‚   â”‚   â”œâ”€â”€ TrustGauge.tsx    Recharts radial gauge
-â”‚   â”‚   â”‚   â”œâ”€â”€ ClaimRow.tsx      Expandable claim card with sources
-â”‚   â”‚   â”‚   â””â”€â”€ VerdictChip.tsx   SUPPORTED / UNSUPPORTED / CONTRADICTED badge
-â”‚   â”‚   â””â”€â”€ pages/
-â”‚   â”‚       â”œâ”€â”€ EvaluatePage.tsx
-â”‚   â”‚       â”œâ”€â”€ ResultsPage.tsx   Full trust report with follow-up chat
-â”‚   â”‚       â””â”€â”€ HistoryPage.tsx
-â”‚   â””â”€â”€ tailwind.config.js
-â””â”€â”€ docker-compose.yml
+├── backend/
+│   ├── main.py                   FastAPI app, CORS, router mounts
+│   ├── config.py                 Pydantic settings from env vars
+│   ├── api/routes/
+│   │   ├── evaluate.py           POST /evaluate
+│   │   ├── history.py            GET /history/{id}
+│   │   └── followup.py           POST /follow-up
+│   ├── agents/
+│   │   ├── graph.py              LangGraph StateGraph wiring
+│   │   ├── state.py              PipelineState, ScoredClaim TypedDicts
+│   │   ├── llm.py                Groq/Anthropic client with JSON extractor
+│   │   ├── embeddings.py         FastEmbed (ONNX) singleton
+│   │   ├── chroma_client.py      ChromaDB HTTP client with cold-start retry
+│   │   ├── quality_metrics.py    Flagged-claim rate and source coverage metrics
+│   │   └── nodes/
+│   │       ├── claim_extractor.py
+│   │       ├── retriever.py      ChromaDB + Tavily augmentation
+│   │       └── scorer.py         Verdict scoring, trust score, correction prompt
+│   ├── ingestion/
+│   │   ├── sources.py            Guideline registry (name, url, tag)
+│   │   ├── ingest.py             Download, chunk, embed, upsert pipeline
+│   │   └── cache/                PDF files committed to repo
+│   ├── db/
+│   │   ├── base.py               SQLAlchemy engine and session
+│   │   └── models.py             Evaluation, Claim
+│   └── schemas/                  Pydantic v2 request and response models
+├── frontend/
+│   ├── src/
+│   │   ├── api/                  Axios client and typed endpoint wrappers
+│   │   ├── context/              ThemeContext (light/dark)
+│   │   ├── components/
+│   │   │   ├── EvalSidebar.tsx   History sidebar with rename and delete
+│   │   │   ├── TrustGauge.tsx    Recharts radial gauge
+│   │   │   ├── ClaimRow.tsx      Expandable claim card with sources
+│   │   │   └── VerdictChip.tsx   SUPPORTED / UNSUPPORTED / CONTRADICTED badge
+│   │   └── pages/
+│   │       ├── EvaluatePage.tsx
+│   │       ├── ResultsPage.tsx   Full trust report with follow-up chat
+│   │       └── HistoryPage.tsx
+│   └── tailwind.config.js
+└── docker-compose.yml
 ```
 
 ---
