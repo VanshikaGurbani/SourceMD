@@ -223,7 +223,7 @@ What this supports: retrieval over the guideline corpus clearly beats the bare L
 
 **Limitations (read before quoting any number).**
 - Small test set (57 claims, 20 answers): intervals are wide and gaps of a few points are noise.
-- **No human reviewed the labels.** The claims were drafted by Claude from the corpus text, then cross-checked by four independent blind re-labelling runs by Claude (134/134 agreement) and mechanical quote verification. Same model family, so shared blind spots are possible, and the claims are cleaner than real LLM output, so absolute accuracy is probably optimistic.
+- **The labels are AI-generated.** The claims were drafted by Claude from the corpus text, then cross-checked by four independent blind re-labelling runs by Claude (134/134 agreement) and mechanical quote verification. Same model family, so shared blind spots are possible, and the claims are cleaner than real LLM output, so absolute accuracy is probably optimistic.
 - Labels are relative to the corpus, not to medical truth: the no-retrieval baseline is penalised when it says SUPPORTED for true statements the corpus does not contain.
 - Retrieval claims were written from the gold sentences, which favours lexical retrieval.
 - The deployed model before this work (`llama-3.3-70b-versatile`) is no longer served by Groq; these numbers are for the current default.

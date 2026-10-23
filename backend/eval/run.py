@@ -326,7 +326,7 @@ def render_report(
     lines += ["## Limitations", "",
               "- Small dataset (~100 claims, test split ~40%): intervals above are wide; differences of a few points are noise.",
               "- Labels are corpus-relative. `llm_only_*` is judged against corpus labels, so true-but-not-in-corpus claims count as errors when the model calls them SUPPORTED. `corpus_web_*` can likewise be 'wrong' for claims the web legitimately supports.",
-              "- Claims were drafted from the corpus text (supported = verbatim/paraphrased guideline sentence, contradicted = minimally edited sentence, unsupported = on-topic claim the corpus does not address) and then cross-checked by blind re-labelling with independent Claude annotator runs (134/134 agreement) plus automated quote verification. **No human reviewed these labels**, and annotators and drafter are the same model family. The style is also cleaner than real LLM output, so absolute accuracy is likely optimistic.",
+              "- Claims were drafted from the corpus text (supported = verbatim/paraphrased guideline sentence, contradicted = minimally edited sentence, unsupported = on-topic claim the corpus does not address) and then cross-checked by blind re-labelling with independent Claude annotator runs (134/134 agreement) plus automated quote verification. **The labels are AI-generated**, and annotators and drafter are the same model family. The style is also cleaner than real LLM output, so absolute accuracy is likely optimistic.",
               "- Claim extraction is not evaluated here (gold claims are fed in).",
               "- Trust AUROC is answer-level over a few dozen answers; treat as indicative only.",
               "- LLM outputs are replayed from `backend/eval/cache/calls.jsonl`; a different model version or prompt requires re-recording.",
@@ -355,7 +355,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--configs", nargs="+", default=DEFAULT_CONFIGS, choices=sorted(CONFIGS))
     ap.add_argument("--out", type=Path, default=DEFAULT_REPORT)
     ap.add_argument("--include-unreviewed", action="store_true",
-                    help="score claims whose labels are not human-confirmed; report is stamped PROVISIONAL")
+                    help="score claims whose labels are not cross-checked; report is stamped PROVISIONAL")
     ap.add_argument("--allow-api", action="store_true",
                     help="allow live Groq/Tavily calls for uncached prompts (spends API quota)")
     ap.add_argument("--dry-run", action="store_true", help="only count uncached API calls per config")

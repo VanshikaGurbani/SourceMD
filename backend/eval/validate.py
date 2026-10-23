@@ -5,7 +5,7 @@
 - balance: label and split counts (printed, not enforced)
 
 A passing run says the *evidence is transcribed correctly*. It does not say the
-labels are right; that needs the human review in ``backend.eval.review``.
+labels are right; that needs the label review in ``backend.eval.review``.
 """
 from __future__ import annotations
 
