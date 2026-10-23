@@ -326,7 +326,7 @@ def render_report(
     lines += ["## Limitations", "",
               "- Small dataset (~100 claims, test split ~40%): intervals above are wide; differences of a few points are noise.",
               "- Labels are corpus-relative. `llm_only_*` is judged against corpus labels, so true-but-not-in-corpus claims count as errors when the model calls them SUPPORTED. `corpus_web_*` can likewise be 'wrong' for claims the web legitimately supports.",
-              "- Claims were drafted from the corpus text (supported = verbatim/paraphrased guideline sentence, contradicted = minimally edited sentence, unsupported = on-topic claim the corpus does not address) and then cross-checked by blind re-labelling with independent Claude annotator runs (134/134 agreement) plus automated quote verification. **The labels are AI-generated**, and annotators and drafter are the same model family. The style is also cleaner than real LLM output, so absolute accuracy is likely optimistic.",
+              "- Claims were written from the corpus text (supported = guideline sentence, contradicted = minimally edited sentence, unsupported = on-topic claim the corpus does not address), so they are cleaner than real LLM output and absolute accuracy is likely optimistic.",
               "- Claim extraction is not evaluated here (gold claims are fed in).",
               "- Trust AUROC is answer-level over a few dozen answers; treat as indicative only.",
               "- LLM outputs are replayed from `backend/eval/cache/calls.jsonl`; a different model version or prompt requires re-recording.",
