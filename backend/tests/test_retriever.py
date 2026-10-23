@@ -20,6 +20,9 @@ class FakeCollection:
     def __init__(self, dense_order: list[int], distances: list[float]):
         self.dense_order, self.distances = dense_order, distances
 
+    def count(self):
+        return len(CHUNKS)
+
     def get(self, include=None):
         return {
             "documents": [c[0] for c in CHUNKS],
