@@ -56,12 +56,12 @@ class Config:
 CONFIGS: dict[str, Config] = {
     c.name: c
     for c in [
-        Config("llm_only_groq", "none", "groq", "No retrieval; Llama 3.3 70B judges from its own knowledge"),
-        Config("corpus_groq", "dense", "groq", "Dense top-3 over NICE/AHA corpus; Llama 3.3 70B"),
-        Config("corpus_web_groq", "dense_web", "groq", "Corpus + Tavily when similarity < 0.35 (production); Llama 3.3 70B"),
-        Config("bm25_groq", "bm25", "groq", "BM25 top-3; Llama 3.3 70B"),
-        Config("hybrid_groq", "hybrid", "groq", "Hybrid BM25+dense (RRF) top-3; Llama 3.3 70B"),
-        Config("hybrid_rerank_groq", "hybrid_rerank", "groq", "Hybrid candidates re-scored by a cross-encoder, top-3; Llama 3.3 70B"),
+        Config("llm_only_groq", "none", "groq", "No retrieval; the Groq LLM judges from its own knowledge"),
+        Config("corpus_groq", "dense", "groq", "Dense top-3 over NICE/AHA corpus"),
+        Config("corpus_web_groq", "dense_web", "groq", "Corpus + Tavily when similarity < 0.35 (production)"),
+        Config("bm25_groq", "bm25", "groq", "BM25 top-3"),
+        Config("hybrid_groq", "hybrid", "groq", "Hybrid BM25+dense (RRF) top-3"),
+        Config("hybrid_rerank_groq", "hybrid_rerank", "groq", "Hybrid candidates re-scored by a cross-encoder, top-3"),
     ]
 }
 DEFAULT_CONFIGS = ["llm_only_groq", "corpus_groq", "corpus_web_groq"]
