@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # Free tier at https://app.tavily.com (1000 searches/month, no credit card)
     TAVILY_API_KEY: str = ""
 
+    # Hybrid BM25 + dense retrieval. Off by default until verdict accuracy is measured
+    # (retrieval hit@3 on the eval set: dense 0.75 -> hybrid 0.93, see docs/EVAL_RESULTS.md).
+    HYBRID_RETRIEVAL: bool = False
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

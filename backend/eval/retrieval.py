@@ -13,25 +13,19 @@ All modes return production-shaped ``RetrievedPassage`` dicts, capped at
 """
 from __future__ import annotations
 
-import re
-from collections.abc import Sequence
-
 import numpy as np
 from rank_bm25 import BM25Okapi
 
 from backend.agents.embeddings import embed_texts
+from backend.agents.hybrid import rrf_fuse, tokenize
 from backend.agents.nodes.retriever import TOP_K, WEB_AUGMENT_THRESHOLD, _web_search
 from backend.agents.state import RetrievedPassage
 from backend.eval.corpus import Chunk, CorpusIndex
 
 MODES = ("none", "dense", "bm25", "hybrid", "dense_web", "hybrid_rerank")
-RRF_K = 60  # standard reciprocal-rank-fusion constant
 CANDIDATES = 20  # depth each ranker contributes to the fusion
 RERANK_POOL = 10  # fused candidates handed to the cross-encoder
 RERANK_MODEL = "Xenova/ms-marco-MiniLM-L-6-v2"
-
-_TOKEN = re.compile(r"[a-z0-9]+")
-
 
 class _CrossEncoder:
     """Thin wrapper over fastembed's ONNX cross-encoder (needs fastembed >= 0.4)."""
@@ -55,11 +49,6 @@ def _cross_encoder() -> _CrossEncoder:
     return _cross_encoder_instance
 
 
-def tokenize(text: str) -> list[str]:
-    """Lowercase alphanumeric tokens (BM25 and token-overlap helpers share this)."""
-    return _TOKEN.findall(text.lower())
-
-
 def _passage(chunk: Chunk, score: float) -> RetrievedPassage:
     return RetrievedPassage(
         doc=chunk.doc,
@@ -70,15 +59,6 @@ def _passage(chunk: Chunk, score: float) -> RetrievedPassage:
         source_url=chunk.source_url,
         web_url=chunk.web_url,
     )
-
-
-def rrf_fuse(rankings: Sequence[Sequence[int]], k: int = RRF_K) -> list[tuple[int, float]]:
-    """Fuse several best-first index rankings; returns ``(index, rrf_score)`` best first."""
-    scores: dict[int, float] = {}
-    for ranking in rankings:
-        for rank, idx in enumerate(ranking, start=1):
-            scores[idx] = scores.get(idx, 0.0) + 1.0 / (k + rank)
-    return sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
 
 
 class EvalRetriever:

@@ -1,8 +1,9 @@
 """Embedding helpers using FastEmbed (ONNX-based, low memory).
 
-FastEmbed uses quantized ONNX models instead of full PyTorch, keeping RAM
-usage ~100 MB vs ~300 MB for sentence-transformers. This fits comfortably
-within Render's 512 MB free-tier limit.
+FastEmbed runs the model through ONNX Runtime instead of PyTorch. Measured peak
+RSS of import + model load + one 64-text batch: ~220 MB vs ~498 MB for
+sentence-transformers (scripts/bench_memory.py, results in the README). That
+difference is what lets it fit in Render's 512 MB free tier.
 
 The same model (all-MiniLM-L6-v2) is used so vectors are compatible with
 existing ChromaDB chunks.
