@@ -381,6 +381,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 3
 
+    os.environ.setdefault("SOURCEMD_RATE_LIMIT_RETRIES", "6")  # long runs wait out free-tier limits
+    os.environ.setdefault("SOURCEMD_RATE_LIMIT_WAIT", "15")
     os.environ["SOURCEMD_CALL_CACHE"] = "count" if args.dry_run else ("auto" if args.allow_api else "replay")
     call_cache.reset_cache_state()
 

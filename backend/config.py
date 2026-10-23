@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # Groq (free alternative — used when GROQ_API_KEY is set)
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "openai/gpt-oss-120b"  # llama-3.3-70b-versatile is no longer served by Groq
+    # Comma-separated free Groq models tried when the primary is rate limited or unavailable.
+    GROQ_FALLBACK_MODELS: str = "openai/gpt-oss-20b,qwen/qwen3.8-27b"
 
     DATABASE_URL: str = "postgresql+psycopg2://sourcemd:sourcemd_dev_password@postgres:5432/sourcemd"
 
@@ -45,6 +47,11 @@ class Settings(BaseSettings):
     # (hit@3 0.75 -> 0.93) but did not improve verdict accuracy and lowered CONTRADICTED recall
     # on the test split (see docs/EVAL_RESULTS.md).
     HYBRID_RETRIEVAL: bool = False
+
+
+    def groq_fallback_models(self) -> list[str]:
+        """The fallback model names, parsed from GROQ_FALLBACK_MODELS."""
+        return [m.strip() for m in self.GROQ_FALLBACK_MODELS.split(",") if m.strip()]
 
 
 @lru_cache(maxsize=1)

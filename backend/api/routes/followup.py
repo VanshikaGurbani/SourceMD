@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.agents.llm import claude_complete
+from backend.agents.llm import LLMBusyError, claude_complete
 
 router = APIRouter(tags=["followup"])
 
@@ -81,6 +81,8 @@ def follow_up(payload: FollowUpRequest) -> FollowUpResponse:
 
     try:
         answer = claude_complete(prompt, system=_SYSTEM, max_tokens=512, temperature=0.3)
+    except LLMBusyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
