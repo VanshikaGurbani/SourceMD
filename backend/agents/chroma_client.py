@@ -75,7 +75,7 @@ def get_guidelines_collection() -> Collection:
 
 
 _WAKE_INTERVAL_SECONDS = 300
-_last_wake = 0.0
+_last_wake = float("-inf")  # monotonic() can be small on a freshly booted host
 _wake_lock = threading.Lock()
 
 
