@@ -34,7 +34,7 @@ User submits question + AI answer
           v
    Trust Report
    - Trust score (0-100)
-   - Hallucination Rate %
+   - Flagged-claim rate % (share of claims the model did not call SUPPORTED)
    - Source Coverage %
    - Per-claim verdicts with rationale and citations
    - Corrected, source-backed answer with clickable sources
@@ -45,17 +45,17 @@ User submits question + AI answer
 
 ## Features
 
-- **Claim-level fact-checking** — answers are broken into atomic claims, each verified independently
-- **Real guideline citations** — evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
-- **Live web augmentation** — Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
-- **Trust score** — 0-100 aggregate metric weighted by claim verdicts and confidence
-- **Hallucination Rate and Source Coverage** — two metrics computed directly from pipeline output
-- **Corrected answer** — a rewritten, source-grounded version of the original AI answer with clickable citations
-- **Follow-up chat** — multi-turn Q&A grounded in retrieved guideline passages, persisted per evaluation
-- **Evaluation history sidebar** — ChatGPT-style sidebar grouped by date, with rename and delete
-- **Anonymous persistence** — evaluations saved to PostgreSQL without requiring an account; history lives in the browser, shareable by URL
-- **Light/dark theme** — persisted to localStorage
-- **Responsive** — works on mobile and desktop
+- **Claim-level fact-checking** â€” answers are broken into atomic claims, each verified independently
+- **Real guideline citations** â€” evidence sourced from NICE NG28, NICE NG136, NICE CG181, and AHA 2025 CPR with page numbers
+- **Live web augmentation** â€” Tavily searches trusted medical domains (NIH, WHO, NICE, AHA, PubMed) when the local corpus lacks relevant content, shown with a live web badge
+- **Trust score** â€” 0-100 aggregate metric weighted by claim verdicts and confidence
+- **Flagged-claim rate and Source Coverage** â€” two descriptive metrics computed directly from pipeline output. The flagged-claim rate is the share of claims the model itself labelled UNSUPPORTED or CONTRADICTED; it is **not** a measured hallucination rate or an accuracy figure (see [Evaluation](#evaluation) for measured accuracy)
+- **Corrected answer** â€” a rewritten, source-grounded version of the original AI answer with clickable citations
+- **Follow-up chat** â€” multi-turn Q&A grounded in retrieved guideline passages, persisted per evaluation
+- **Evaluation history sidebar** â€” ChatGPT-style sidebar grouped by date, with rename and delete
+- **Anonymous persistence** â€” evaluations saved to PostgreSQL without requiring an account; history lives in the browser, shareable by URL
+- **Light/dark theme** â€” persisted to localStorage
+- **Responsive** â€” works on mobile and desktop
 
 ---
 
@@ -63,8 +63,8 @@ User submits question + AI answer
 
 | Layer | Technology |
 |---|---|
-| LLM | Groq `llama-3.3-70b-versatile` (primary) with Anthropic Claude as fallback |
-| Agent framework | LangGraph `StateGraph` — 3-node linear pipeline |
+| LLM | Groq `openai/gpt-oss-120b` (primary; set `GROQ_MODEL` to change) with optional Anthropic failover (`LLM_FAILOVER=true`) |
+| Agent framework | LangGraph `StateGraph` â€” 3-node linear pipeline |
 | Embeddings | `all-MiniLM-L6-v2` (384-dim) served via FastEmbed (ONNX, CPU) |
 | Vector store | ChromaDB over HTTP, cosine similarity, ~844 guideline chunks |
 | Web search | Tavily API (trusted medical domains only) |
@@ -78,47 +78,47 @@ User submits question + AI answer
 
 ```
 sourcemd/
-├── backend/
-│   ├── main.py                   FastAPI app, CORS, router mounts
-│   ├── config.py                 Pydantic settings from env vars
-│   ├── api/routes/
-│   │   ├── evaluate.py           POST /evaluate
-│   │   ├── history.py            GET /history/{id}
-│   │   └── followup.py           POST /follow-up
-│   ├── agents/
-│   │   ├── graph.py              LangGraph StateGraph wiring
-│   │   ├── state.py              PipelineState, ScoredClaim TypedDicts
-│   │   ├── llm.py                Groq/Anthropic client with JSON extractor
-│   │   ├── embeddings.py         FastEmbed (ONNX) singleton
-│   │   ├── chroma_client.py      ChromaDB HTTP client with cold-start retry
-│   │   ├── quality_metrics.py    Hallucination rate and source coverage metrics
-│   │   └── nodes/
-│   │       ├── claim_extractor.py
-│   │       ├── retriever.py      ChromaDB + Tavily augmentation
-│   │       └── scorer.py         Verdict scoring, trust score, correction prompt
-│   ├── ingestion/
-│   │   ├── sources.py            Guideline registry (name, url, tag)
-│   │   ├── ingest.py             Download, chunk, embed, upsert pipeline
-│   │   └── cache/                PDF files committed to repo
-│   ├── db/
-│   │   ├── base.py               SQLAlchemy engine and session
-│   │   └── models.py             Evaluation, Claim
-│   └── schemas/                  Pydantic v2 request and response models
-├── frontend/
-│   ├── src/
-│   │   ├── api/                  Axios client and typed endpoint wrappers
-│   │   ├── context/              ThemeContext (light/dark)
-│   │   ├── components/
-│   │   │   ├── EvalSidebar.tsx   History sidebar with rename and delete
-│   │   │   ├── TrustGauge.tsx    Recharts radial gauge
-│   │   │   ├── ClaimRow.tsx      Expandable claim card with sources
-│   │   │   └── VerdictChip.tsx   SUPPORTED / UNSUPPORTED / CONTRADICTED badge
-│   │   └── pages/
-│   │       ├── EvaluatePage.tsx
-│   │       ├── ResultsPage.tsx   Full trust report with follow-up chat
-│   │       └── HistoryPage.tsx
-│   └── tailwind.config.js
-└── docker-compose.yml
+â”œâ”€â”€ backend/
+â”‚   â”œâ”€â”€ main.py                   FastAPI app, CORS, router mounts
+â”‚   â”œâ”€â”€ config.py                 Pydantic settings from env vars
+â”‚   â”œâ”€â”€ api/routes/
+â”‚   â”‚   â”œâ”€â”€ evaluate.py           POST /evaluate
+â”‚   â”‚   â”œâ”€â”€ history.py            GET /history/{id}
+â”‚   â”‚   â””â”€â”€ followup.py           POST /follow-up
+â”‚   â”œâ”€â”€ agents/
+â”‚   â”‚   â”œâ”€â”€ graph.py              LangGraph StateGraph wiring
+â”‚   â”‚   â”œâ”€â”€ state.py              PipelineState, ScoredClaim TypedDicts
+â”‚   â”‚   â”œâ”€â”€ llm.py                Groq/Anthropic client with JSON extractor
+â”‚   â”‚   â”œâ”€â”€ embeddings.py         FastEmbed (ONNX) singleton
+â”‚   â”‚   â”œâ”€â”€ chroma_client.py      ChromaDB HTTP client with cold-start retry
+â”‚   â”‚   â”œâ”€â”€ quality_metrics.py    Flagged-claim rate and source coverage metrics
+â”‚   â”‚   â””â”€â”€ nodes/
+â”‚   â”‚       â”œâ”€â”€ claim_extractor.py
+â”‚   â”‚       â”œâ”€â”€ retriever.py      ChromaDB + Tavily augmentation
+â”‚   â”‚       â””â”€â”€ scorer.py         Verdict scoring, trust score, correction prompt
+â”‚   â”œâ”€â”€ ingestion/
+â”‚   â”‚   â”œâ”€â”€ sources.py            Guideline registry (name, url, tag)
+â”‚   â”‚   â”œâ”€â”€ ingest.py             Download, chunk, embed, upsert pipeline
+â”‚   â”‚   â””â”€â”€ cache/                PDF files committed to repo
+â”‚   â”œâ”€â”€ db/
+â”‚   â”‚   â”œâ”€â”€ base.py               SQLAlchemy engine and session
+â”‚   â”‚   â””â”€â”€ models.py             Evaluation, Claim
+â”‚   â””â”€â”€ schemas/                  Pydantic v2 request and response models
+â”œâ”€â”€ frontend/
+â”‚   â”œâ”€â”€ src/
+â”‚   â”‚   â”œâ”€â”€ api/                  Axios client and typed endpoint wrappers
+â”‚   â”‚   â”œâ”€â”€ context/              ThemeContext (light/dark)
+â”‚   â”‚   â”œâ”€â”€ components/
+â”‚   â”‚   â”‚   â”œâ”€â”€ EvalSidebar.tsx   History sidebar with rename and delete
+â”‚   â”‚   â”‚   â”œâ”€â”€ TrustGauge.tsx    Recharts radial gauge
+â”‚   â”‚   â”‚   â”œâ”€â”€ ClaimRow.tsx      Expandable claim card with sources
+â”‚   â”‚   â”‚   â””â”€â”€ VerdictChip.tsx   SUPPORTED / UNSUPPORTED / CONTRADICTED badge
+â”‚   â”‚   â””â”€â”€ pages/
+â”‚   â”‚       â”œâ”€â”€ EvaluatePage.tsx
+â”‚   â”‚       â”œâ”€â”€ ResultsPage.tsx   Full trust report with follow-up chat
+â”‚   â”‚       â””â”€â”€ HistoryPage.tsx
+â”‚   â””â”€â”€ tailwind.config.js
+â””â”€â”€ docker-compose.yml
 ```
 
 ---
@@ -174,6 +174,52 @@ curl -X POST https://sourcemd-backend.onrender.com/evaluate \
 | AHA 2025 CPR/ECC Highlights | eccguidelines.heart.org | CPR and Emergency Cardiovascular Care |
 
 Out-of-corpus queries are handled by Tavily live web search against NIH, WHO, PubMed, Mayo Clinic, and other trusted domains.
+
+---
+
+## Memory footprint (ONNX vs PyTorch embeddings)
+
+`scripts/bench_memory.py` loads `all-MiniLM-L6-v2` in a fresh subprocess, embeds 64 sentences, and reports the process's peak resident memory. Median of 5 runs after a warm-up (raw data in `docs/bench/`):
+
+| Embedding stack | Linux container, Python 3.11 (peak RSS) | Windows 11 (peak RSS) |
+|---|---|---|
+| `sentence-transformers` + PyTorch 2.14 (CPU) | 526 MB | 498 MB |
+| FastEmbed 0.3.6 + ONNX Runtime 1.31 | 247 MB | 220 MB |
+| Reduction | **53%** | 56% |
+
+The Linux run (Docker `python:3.11-slim`, both stacks on the same Python) is the closer proxy for Render. It covers import, model load and one batch of embeddings, not the whole FastAPI process. Reproduce: `python scripts/bench_memory.py --python-torch <py with sentence-transformers> --python-onnx <py with fastembed>`.
+
+---
+
+## Evaluation
+
+Design and label definitions: [docs/UPGRADE_PLAN.md](docs/UPGRADE_PLAN.md). Full tables (confusion matrices, per-class scores, trust-score validity): [docs/EVAL_RESULTS.md](docs/EVAL_RESULTS.md). Everything is regenerated by `python -m backend.eval.run`; model outputs are replayed from `backend/eval/cache/calls.jsonl`, so reruns are free and deterministic.
+
+**Setup.** 134 labelled claims in 48 short answers, labelled against the four ingested guidelines (`SUPPORTED` / `UNSUPPORTED` = corpus silent / `CONTRADICTED`). Split by answer into dev (iteration) and test (reported here: 20 answers, 57 claims). Gold claims are fed straight into retrieval and scoring, so this measures verification, not claim extraction. LLM: Groq `openai/gpt-oss-120b`.
+
+**Verdict accuracy, test split** (95% bootstrap intervals in brackets):
+
+| Configuration | Accuracy | Macro-F1 | CONTRADICTED recall | Trust-score AUROC |
+|---|---|---|---|---|
+| LLM only, no retrieval | 0.61 [0.49, 0.74] | 0.52 | 0.82 | 0.85 [0.59, 1.00] |
+| Corpus, dense top-3 (production) | 0.83 [0.74, 0.91] | 0.81 | 0.76 | 0.98 [0.89, 1.00] |
+| Corpus + Tavily web (production behaviour) | 0.81 [0.70, 0.90] | 0.80 | 0.76 | 0.98 [0.89, 1.00] |
+| Corpus, hybrid BM25 + dense | 0.84 [0.74, 0.93] | 0.82 | 0.59 | 0.97 [0.86, 1.00] |
+
+Retrieval over the guideline corpus clearly beats the bare LLM (0.83 vs 0.61, intervals do not overlap), and the 0-100 trust score ranks fully-supported answers above flawed ones well (AUROC 0.98 over 20 test answers). Web augmentation and hybrid retrieval are not distinguishable from plain dense retrieval on verdict accuracy, and hybrid lowers recall on CONTRADICTED claims, so hybrid stays off by default (`HYBRID_RETRIEVAL=true` enables it).
+
+**Citations** (corpus configs): the quote the model cites literally appears in the passage it cites for 97% of committed verdicts; 83% [0.69, 0.94] cite a passage that also contains the gold evidence.
+
+**Retrieval alone** (no LLM; share of claims whose gold guideline sentence is in the top-3 chunks; n=103): dense 0.78 [0.70, 0.85], BM25 0.88 [0.82, 0.94], hybrid 0.92 [0.86, 0.97], hybrid + cross-encoder rerank 0.91 [0.85, 0.96].
+
+The test set is small, so treat differences of a few points as noise.
+
+---
+
+## Testing and CI
+
+- `pytest` (90 offline tests, no API keys, no network): JSON extraction, claim-extraction fallbacks, verdict parsing, trust-score aggregation, quality metrics, the call cache, citation check, eval metrics and dataset integrity, and the API routes (in-memory SQLite, pipeline faked). LLM responses used by the tests are canned fixtures keyed by the real request hash (`backend/tests/fixtures/`), not recordings of a live model.
+- `ruff check .`, `mypy`, and the frontend `npm run build` (tsc + vite) run in GitHub Actions (`.github/workflows/ci.yml`).
 
 ---
 

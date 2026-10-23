@@ -15,8 +15,8 @@ from backend.config import get_settings
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Application lifespan hook — creates DB tables if they don't exist."""
-    from backend.db.base import Base, engine
     import backend.db.models  # noqa: F401 — ensure models are registered
+    from backend.db.base import Base, engine
     Base.metadata.create_all(bind=engine)
     yield
 

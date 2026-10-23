@@ -1,0 +1,35 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv", "frontend"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = [
+    "B008",  # FastAPI Depends() in defaults is the documented pattern
+    "UP042", # (str, Enum) is used by the existing models
+    "E501",  # long prompt/report strings; formatting is not enforced
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/**" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["backend"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["backend"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+check_untyped_defs = false
+
+
+# chromadb's type stubs are stricter than its runtime API (str vs IncludeEnum, list vs ndarray).
+[[tool.mypy.overrides]]
+module = ["backend.agents.chroma_client", "backend.ingestion.ingest", "backend.agents.nodes.retriever"]
+disable_error_code = ["arg-type", "list-item", "attr-defined", "valid-type"]

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import EvalSidebar from "./components/EvalSidebar";
+import ServerStatusBanner from "./components/ServerStatusBanner";
+import { ServerStatusProvider } from "./context/ServerStatusContext";
 import EvaluatePage from "./pages/EvaluatePage";
 import HistoryPage from "./pages/HistoryPage";
 import ResultsPage from "./pages/ResultsPage";
@@ -14,9 +16,11 @@ function ResultsPageKeyed() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="*" element={<AppLayout />} />
-    </Routes>
+    <ServerStatusProvider>
+      <Routes>
+        <Route path="*" element={<AppLayout />} />
+      </Routes>
+    </ServerStatusProvider>
   );
 }
 
@@ -59,6 +63,7 @@ function AppLayout() {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
+          <ServerStatusBanner />
           <Routes>
             <Route path="/" element={<Navigate to="/evaluate" replace />} />
             <Route path="/evaluate" element={<EvaluatePage />} />

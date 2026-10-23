@@ -172,9 +172,9 @@ export default function ResultsPage() {
         </div>
         <div className="md:col-span-2 grid grid-cols-2 gap-4">
           <StatCard
-            label="Hallucination Rate"
+            label="Flagged Claims"
             value={hallucinationRate === null ? "n/a" : `${Math.round(hallucinationRate * 100)}%`}
-            subtitle="lower is better"
+            subtitle="share of claims not supported"
             accent={hallucinationRate === null ? "neutral" : hallucinationAccent(hallucinationRate)}
           />
           <StatCard

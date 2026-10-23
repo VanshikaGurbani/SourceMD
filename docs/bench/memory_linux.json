@@ -1,0 +1,110 @@
+{
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.41",
+  "results": {
+    "torch": [
+      {
+        "variant": "torch",
+        "peak_rss_mb": 525.23828125,
+        "dim": 384,
+        "seconds": 5.081939173999999,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "6.2.0"
+        }
+      },
+      {
+        "variant": "torch",
+        "peak_rss_mb": 526.1875,
+        "dim": 384,
+        "seconds": 5.232077763000007,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "6.2.0"
+        }
+      },
+      {
+        "variant": "torch",
+        "peak_rss_mb": 525.42578125,
+        "dim": 384,
+        "seconds": 5.122764715999992,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "6.2.0"
+        }
+      },
+      {
+        "variant": "torch",
+        "peak_rss_mb": 526.25390625,
+        "dim": 384,
+        "seconds": 5.171628337000001,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "6.2.0"
+        }
+      },
+      {
+        "variant": "torch",
+        "peak_rss_mb": 526.25,
+        "dim": 384,
+        "seconds": 5.146401356999988,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "6.2.0"
+        }
+      }
+    ],
+    "onnx": [
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 248.9765625,
+        "dim": 384,
+        "seconds": 0.9616255679999881,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      },
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 247.1484375,
+        "dim": 384,
+        "seconds": 0.9243197850000229,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      },
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 246.66796875,
+        "dim": 384,
+        "seconds": 0.8990584619999993,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      },
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 246.21484375,
+        "dim": 384,
+        "seconds": 0.9737906230000135,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      },
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 247.82421875,
+        "dim": 384,
+        "seconds": 0.9328896879999888,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      }
+    ]
+  },
+  "reduction_pct": 53.03034802233044
+}

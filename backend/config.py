@@ -15,11 +15,14 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
     ANTHROPIC_API_KEY: str = ""
-    CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
+    CLAUDE_MODEL: str = "claude-haiku-5-5"
+
+    # Fail over to Anthropic (paid) when a Groq call fails and ANTHROPIC_API_KEY is set. Off by default.
+    LLM_FAILOVER: bool = False
 
     # Groq (free alternative — used when GROQ_API_KEY is set)
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "openai/gpt-oss-120b"  # llama-3.3-70b-versatile is no longer served by Groq
 
     DATABASE_URL: str = "postgresql+psycopg2://sourcemd:sourcemd_dev_password@postgres:5432/sourcemd"
 
@@ -37,6 +40,11 @@ class Settings(BaseSettings):
     # Tavily web search (optional — augments ChromaDB with live guideline search)
     # Free tier at https://app.tavily.com (1000 searches/month, no credit card)
     TAVILY_API_KEY: str = ""
+
+    # Hybrid BM25 + dense retrieval. Off by default: it finds the gold passage more often
+    # (hit@3 0.75 -> 0.93) but did not improve verdict accuracy and lowered CONTRADICTED recall
+    # on the test split (see docs/EVAL_RESULTS.md).
+    HYBRID_RETRIEVAL: bool = False
 
 
 @lru_cache(maxsize=1)

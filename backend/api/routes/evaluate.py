@@ -47,7 +47,7 @@ def evaluate(
     db.flush()  # get the auto-generated id before adding claims
 
     claim_rows: list[Claim] = []
-    for i, sc in enumerate(scored):
+    for sc in scored:
         claim_rows.append(
             Claim(
                 evaluation_id=eval_row.id,
@@ -86,3 +86,4 @@ def evaluate(
         created_at=eval_row.created_at,
         claims=claims_out,
     )
+

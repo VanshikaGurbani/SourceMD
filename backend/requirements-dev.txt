@@ -1,0 +1,11 @@
+-r requirements.txt
+
+# Evaluation harness
+rank-bm25==0.2.2
+numpy>=1.26
+
+# Tests and linting
+pytest==8.3.3
+ruff==0.6.9
+mypy==1.11.2
+psutil>=5.9

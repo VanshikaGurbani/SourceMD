@@ -1,0 +1,110 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "results": {
+    "torch": [
+      {
+        "variant": "torch",
+        "peak_rss_mb": 499.09375,
+        "dim": 384,
+        "seconds": 14.324219100000846,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "5.1.1"
+        }
+      },
+      {
+        "variant": "torch",
+        "peak_rss_mb": 498.41015625,
+        "dim": 384,
+        "seconds": 14.469875499999034,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "5.1.1"
+        }
+      },
+      {
+        "variant": "torch",
+        "peak_rss_mb": 498.1328125,
+        "dim": 384,
+        "seconds": 14.626737499998853,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "5.1.1"
+        }
+      },
+      {
+        "variant": "torch",
+        "peak_rss_mb": 498.6640625,
+        "dim": 384,
+        "seconds": 14.904227400000309,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "5.1.1"
+        }
+      },
+      {
+        "variant": "torch",
+        "peak_rss_mb": 498.18359375,
+        "dim": 384,
+        "seconds": 14.440630200000669,
+        "versions": {
+          "torch": "2.14.1+cpu",
+          "sentence-transformers": "5.1.1"
+        }
+      }
+    ],
+    "onnx": [
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 219.703125,
+        "dim": 384,
+        "seconds": 1.4297069999993255,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      },
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 219.80859375,
+        "dim": 384,
+        "seconds": 1.383845599999404,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      },
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 219.13671875,
+        "dim": 384,
+        "seconds": 1.423278999998729,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      },
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 219.5546875,
+        "dim": 384,
+        "seconds": 1.3998494000006758,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      },
+      {
+        "variant": "onnx",
+        "peak_rss_mb": 219.6796875,
+        "dim": 384,
+        "seconds": 1.3931824000010238,
+        "versions": {
+          "fastembed": "0.3.6",
+          "onnxruntime": "1.31.0"
+        }
+      }
+    ]
+  },
+  "reduction_pct": 55.92391432131857
+}
