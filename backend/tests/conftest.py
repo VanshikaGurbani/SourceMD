@@ -13,6 +13,7 @@ os.environ["GROQ_MODEL"] = "test-model"  # pinned so fixtures do not depend on t
 os.environ["ANTHROPIC_API_KEY"] = ""
 os.environ["TAVILY_API_KEY"] = ""
 os.environ["SOURCEMD_CALL_CACHE"] = "off"
+os.environ["SOURCEMD_WAKE_CHROMA"] = "0"  # no background network pings in tests
 
 FIXTURES = Path(__file__).parent / "fixtures"
 LLM_FIXTURE_FILE = FIXTURES / "llm_calls.jsonl"

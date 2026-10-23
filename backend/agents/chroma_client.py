@@ -1,6 +1,8 @@
 """Thin wrapper around the ChromaDB HTTP client."""
 from __future__ import annotations
 
+import os
+import threading
 import time
 from functools import lru_cache
 
@@ -10,9 +12,10 @@ from chromadb.api.models.Collection import Collection
 from backend.config import get_settings
 
 # Free-tier hosts spin down when idle; the first request can hit a 429/refused
-# connection while the service wakes up, so we retry with backoff (~60s total).
-CONNECT_RETRIES = 5
-BACKOFF_SECONDS = [2, 5, 10, 20, 30]
+# connection while the service wakes up (it can take 50 s or more), so we retry with
+# backoff for about 110 s in total.
+CONNECT_RETRIES = 8
+BACKOFF_SECONDS = [3, 5, 10, 15, 20, 25, 30]
 
 
 @lru_cache(maxsize=1)
@@ -69,3 +72,38 @@ def get_guidelines_collection() -> Collection:
         name=settings.CHROMA_COLLECTION,
         metadata={"hnsw:space": "cosine"},
     )
+
+
+_WAKE_INTERVAL_SECONDS = 300
+_last_wake = float("-inf")  # monotonic() can be small on a freshly booted host
+_wake_lock = threading.Lock()
+
+
+def wake_chroma_async() -> None:
+    """Ping ChromaDB in the background so a sleeping free-tier instance starts waking.
+
+    Called from /health, which the frontend hits on page load, so the backend and the
+    vector store wake in parallel instead of one after the other. Never blocks or raises.
+    """
+    global _last_wake
+    if os.environ.get("SOURCEMD_WAKE_CHROMA", "1") == "0":
+        return
+    with _wake_lock:
+        now = time.monotonic()
+        if now - _last_wake < _WAKE_INTERVAL_SECONDS:
+            return
+        _last_wake = now
+
+    settings = get_settings()
+    scheme = "https" if settings.CHROMA_PORT == 443 else "http"
+    url = f"{scheme}://{settings.CHROMA_HOST}:{settings.CHROMA_PORT}/api/v1/heartbeat"
+
+    def ping() -> None:
+        try:
+            import httpx
+
+            httpx.get(url, timeout=100.0)
+        except Exception:  # noqa: BLE001 - best effort only
+            pass
+
+    threading.Thread(target=ping, daemon=True).start()
