@@ -45,3 +45,4 @@ backend/eval/cache/corpus_*
 .venv/
 
 *.tsbuildinfo
+.venv-rerank/
