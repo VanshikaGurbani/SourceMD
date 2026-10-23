@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.agents.graph import run_pipeline
+from backend.agents.llm import LLMBusyError
 from backend.agents.quality_metrics import compute_quality_metrics
 from backend.db.base import get_db
 from backend.db.models import Claim, Evaluation
@@ -26,6 +27,8 @@ def evaluate(
     """
     try:
         result = run_pipeline(payload.question, payload.ai_answer)
+    except LLMBusyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

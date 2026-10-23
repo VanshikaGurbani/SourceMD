@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import time
 from functools import lru_cache
@@ -21,8 +22,19 @@ from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_RATE_LIMIT_RETRIES = 6
 GROQ_TOKEN_HEADROOM = 3
+
+
+class LLMBusyError(RuntimeError):
+    """Every configured model hit its (free-tier) rate limit."""
+
+
+def _rate_limit_retries() -> int:
+    return int(os.environ.get("SOURCEMD_RATE_LIMIT_RETRIES", "2"))
+
+
+def _rate_limit_wait() -> float:
+    return float(os.environ.get("SOURCEMD_RATE_LIMIT_WAIT", "5"))
 
 _JSON_FENCE =re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
 
@@ -98,7 +110,8 @@ def _raw_complete(
         from openai import RateLimitError  # noqa: WPS433
 
         client = _get_groq_client()
-        for attempt in range(GROQ_RATE_LIMIT_RETRIES):
+        retries = _rate_limit_retries()
+        for attempt in range(retries):
             try:
                 resp = client.chat.completions.create(
                     model=model,
@@ -114,9 +127,9 @@ def _raw_complete(
                 return (resp.choices[0].message.content or "").strip()
             except RateLimitError:
                 # Free-tier limits are per minute; wait it out instead of failing a long eval run.
-                if attempt == GROQ_RATE_LIMIT_RETRIES - 1:
+                if attempt == retries - 1:
                     raise
-                time.sleep(15 * (attempt + 1))
+                time.sleep(_rate_limit_wait() * (attempt + 1))
         raise RuntimeError("unreachable")
 
     client = _get_anthropic_client()
@@ -160,15 +173,31 @@ def claude_complete(
     )
 
     def call() -> str:
-        try:
+        if provider is not None or resolved != "groq":
             return _raw_complete(resolved, model, sys_msg, prompt, max_tokens, temperature)
-        except Exception:
-            if not can_fail_over:
-                raise
-            logger.warning("Groq call failed; falling back to Anthropic", exc_info=True)
-            return _raw_complete(
-                "anthropic", get_settings().CLAUDE_MODEL, sys_msg, prompt, max_tokens, temperature
-            )
+        # Default (production) routing: try the configured Groq model, then the free fallback
+        # models (each has its own daily token allowance), then optionally Anthropic.
+        from openai import RateLimitError  # noqa: WPS433
+
+        models = [model, *settings.groq_fallback_models()]
+        rate_limited = False
+        last_error: Exception | None = None
+        for m in models:
+            try:
+                return _raw_complete("groq", m, sys_msg, prompt, max_tokens, temperature)
+            except Exception as exc:  # noqa: BLE001 - any failure moves on to the next model
+                last_error = exc
+                rate_limited = rate_limited or isinstance(exc, RateLimitError)
+                logger.warning("Groq model %s failed (%s); trying the next one", m, type(exc).__name__)
+        if can_fail_over:
+            logger.warning("All Groq models failed; falling back to Anthropic")
+            return _raw_complete("anthropic", settings.CLAUDE_MODEL, sys_msg, prompt, max_tokens, temperature)
+        if rate_limited:
+            raise LLMBusyError(
+                "The AI model is at its free-tier limit right now. Please try again in a minute."
+            ) from last_error
+        assert last_error is not None
+        raise last_error
 
     payload = {
         "provider": resolved,
