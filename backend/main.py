@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.agents.chroma_client import wake_chroma_async
 from backend.api.routes import evaluate as evaluate_routes
 from backend.api.routes import followup as followup_routes
 from backend.api.routes import history as history_routes
@@ -40,7 +41,8 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:
-        """Lightweight liveness probe used by docker-compose and CI."""
+        """Liveness probe used by docker-compose and CI; also starts waking ChromaDB."""
+        wake_chroma_async()
         return {"status": "ok"}
 
     app.include_router(evaluate_routes.router)
