@@ -9,6 +9,7 @@ from backend.agents.embeddings import embed_texts
 from backend.agents.hybrid import Bm25Index, rrf_fuse
 from backend.agents.state import PipelineState, RetrievedPassage
 from backend.config import get_settings
+from backend.ingestion.seed import seed_if_empty
 
 TOP_K = 3
 CANDIDATES = 20  # depth each ranker contributes to hybrid fusion
@@ -161,6 +162,8 @@ def retrieve_passages(state: PipelineState) -> PipelineState:
         return {"retrieved": {}}
 
     collection = get_guidelines_collection()
+    # The free-tier Chroma instance comes back empty after it spins down; restore it from the seed files.
+    seed_if_empty(collection)
     vectors = embed_texts(claims)
 
     use_hybrid = get_settings().HYBRID_RETRIEVAL

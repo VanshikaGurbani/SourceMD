@@ -137,6 +137,7 @@ The live app runs entirely on free tiers:
 Backend environment variables: `DATABASE_URL` (Neon connection string with `sslmode=require`), `CHROMA_HOST`, `CHROMA_PORT`, `FRONTEND_ORIGIN`, `GROQ_API_KEY`, `ANTHROPIC_API_KEY`, `TAVILY_API_KEY`, `JWT_SECRET`.
 
 Notes:
+- The free ChromaDB instance loses its data whenever it spins down. The backend restores the corpus automatically from precomputed vectors in `backend/ingestion/seed/` (no embedding model needed) the first time it finds the collection empty. Regenerate the seed with `python -m backend.ingestion.seed --export` if the PDFs change.
 - Ingestion is too memory-hungry for a 512 MB instance. Run it locally in the compose backend container with `CHROMA_HOST` and `CHROMA_PORT` overridden to point at the remote ChromaDB.
 - Free Render services sleep after 15 minutes idle. The first request afterwards can take 30 to 60 seconds, and the backend retries its ChromaDB connection with backoff while the service wakes.
 
@@ -202,13 +203,13 @@ Design and label definitions: [docs/UPGRADE_PLAN.md](docs/UPGRADE_PLAN.md). Full
 | Configuration | Accuracy | Macro-F1 | CONTRADICTED recall | Trust-score AUROC |
 |---|---|---|---|---|
 | LLM only, no retrieval | 0.61 [0.49, 0.74] | 0.52 | 0.82 | 0.85 [0.59, 1.00] |
-| Corpus, dense top-3 (production) | 0.83 [0.74, 0.91] | 0.81 | 0.76 | 0.98 [0.89, 1.00] |
-| Corpus + Tavily web (production behaviour) | 0.81 [0.70, 0.90] | 0.80 | 0.76 | 0.98 [0.89, 1.00] |
-| Corpus, hybrid BM25 + dense | 0.84 [0.74, 0.93] | 0.82 | 0.59 | 0.97 [0.86, 1.00] |
+| Corpus, dense top-3 (production) | 0.83 [0.72, 0.91] | 0.81 | 0.76 | 0.98 [0.89, 1.00] |
+| Corpus + Tavily web (production behaviour) | 0.81 [0.70, 0.91] | 0.79 | 0.76 | 0.98 [0.89, 1.00] |
+| Corpus, hybrid BM25 + dense | 0.86 [0.77, 0.95] | 0.83 | 0.65 | 0.98 [0.93, 1.00] |
 
 Retrieval over the guideline corpus clearly beats the bare LLM (0.83 vs 0.61, intervals do not overlap), and the 0-100 trust score ranks fully-supported answers above flawed ones well (AUROC 0.98 over 20 test answers). Web augmentation and hybrid retrieval are not distinguishable from plain dense retrieval on verdict accuracy, and hybrid lowers recall on CONTRADICTED claims, so hybrid stays off by default (`HYBRID_RETRIEVAL=true` enables it).
 
-**Citations** (corpus configs): the quote the model cites literally appears in the passage it cites for 97% of committed verdicts; 83% [0.69, 0.94] cite a passage that also contains the gold evidence.
+**Citations** (corpus configs): the quote the model cites literally appears in the passage it cites for 95% of committed verdicts; 79% [0.66, 0.92] cite a passage that also contains the gold evidence.
 
 **Retrieval alone** (no LLM; share of claims whose gold guideline sentence is in the top-3 chunks; n=103): dense 0.78 [0.70, 0.85], BM25 0.88 [0.82, 0.94], hybrid 0.92 [0.86, 0.97], hybrid + cross-encoder rerank 0.91 [0.85, 0.96].
 

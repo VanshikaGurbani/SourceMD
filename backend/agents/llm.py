@@ -22,6 +22,7 @@ from backend.config import get_settings
 logger = logging.getLogger(__name__)
 
 GROQ_RATE_LIMIT_RETRIES = 6
+GROQ_TOKEN_HEADROOM = 3
 
 _JSON_FENCE =re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
 
@@ -105,7 +106,9 @@ def _raw_complete(
                         {"role": "system", "content": sys_msg},
                         {"role": "user", "content": prompt},
                     ],
-                    max_tokens=max_tokens,
+                    # Reasoning models spend part of the budget thinking; without headroom the
+                    # visible answer can come back empty.
+                    max_tokens=max_tokens * GROQ_TOKEN_HEADROOM,
                     temperature=temperature,
                 )
                 return (resp.choices[0].message.content or "").strip()
