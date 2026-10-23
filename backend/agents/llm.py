@@ -10,14 +10,20 @@ codebase is backend-agnostic.
 from __future__ import annotations
 
 import json
+import logging
 import re
+import time
 from functools import lru_cache
 from typing import cast
 
 from backend.agents.call_cache import cache_mode, cached_call
 from backend.config import get_settings
 
-_JSON_FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
+logger = logging.getLogger(__name__)
+
+GROQ_RATE_LIMIT_RETRIES = 6
+
+_JSON_FENCE =re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
 
 
 # ---------------------------------------------------------------------------
@@ -88,17 +94,27 @@ def _raw_complete(
 ) -> str:
     """Make one real API call to ``provider`` and return the text."""
     if provider == "groq":
+        from openai import RateLimitError  # noqa: WPS433
+
         client = _get_groq_client()
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": sys_msg},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
-        return (resp.choices[0].message.content or "").strip()
+        for attempt in range(GROQ_RATE_LIMIT_RETRIES):
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": sys_msg},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+                return (resp.choices[0].message.content or "").strip()
+            except RateLimitError:
+                # Free-tier limits are per minute; wait it out instead of failing a long eval run.
+                if attempt == GROQ_RATE_LIMIT_RETRIES - 1:
+                    raise
+                time.sleep(15 * (attempt + 1))
+        raise RuntimeError("unreachable")
 
     client = _get_anthropic_client()
     msg = client.messages.create(
@@ -125,13 +141,32 @@ def claude_complete(
 ) -> str:
     """Run a single-turn completion and return the text response.
 
-    Routes to Groq (free) when GROQ_API_KEY is set, otherwise falls back
-    to Anthropic; ``provider`` forces one explicitly (used by the eval
-    ablations). Calls go through the record/replay cache, which is a no-op
+    Routes to Groq (free) when GROQ_API_KEY is set, otherwise to Anthropic.
+    With LLM_FAILOVER=true and both keys set, a failed Groq call fails over to Anthropic (paid).
+    ``provider`` forces one explicitly (used by the eval ablations; no failover). Calls go through the record/replay cache, which is a no-op
     unless SOURCEMD_CALL_CACHE is set.
     """
     sys_msg = system or "You are a careful, literal medical fact-checking assistant."
     resolved, model = resolve_provider(provider)
+    # Automatic failover only in the default (production) routing: if the Groq call fails
+    # (e.g. the configured model was retired) and an Anthropic key exists, use Anthropic.
+    # An explicitly requested provider (eval ablations) never silently switches.
+    settings = get_settings()
+    can_fail_over = (
+        provider is None and resolved == "groq" and settings.LLM_FAILOVER and bool(settings.ANTHROPIC_API_KEY)
+    )
+
+    def call() -> str:
+        try:
+            return _raw_complete(resolved, model, sys_msg, prompt, max_tokens, temperature)
+        except Exception:
+            if not can_fail_over:
+                raise
+            logger.warning("Groq call failed; falling back to Anthropic", exc_info=True)
+            return _raw_complete(
+                "anthropic", get_settings().CLAUDE_MODEL, sys_msg, prompt, max_tokens, temperature
+            )
+
     payload = {
         "provider": resolved,
         "model": model,
@@ -145,7 +180,7 @@ def claude_complete(
         cached_call(
             "llm",
             payload,
-            lambda: _raw_complete(resolved, model, sys_msg, prompt, max_tokens, temperature),
+            call,
             meta={"provider": resolved, "model": model},
             placeholder="{}",
         ),

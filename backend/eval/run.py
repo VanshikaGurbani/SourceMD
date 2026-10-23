@@ -59,13 +59,12 @@ CONFIGS: dict[str, Config] = {
         Config("llm_only_groq", "none", "groq", "No retrieval; Llama 3.3 70B judges from its own knowledge"),
         Config("corpus_groq", "dense", "groq", "Dense top-3 over NICE/AHA corpus; Llama 3.3 70B"),
         Config("corpus_web_groq", "dense_web", "groq", "Corpus + Tavily when similarity < 0.35 (production); Llama 3.3 70B"),
-        Config("corpus_claude", "dense", "anthropic", "Dense top-3 over corpus; Claude"),
         Config("bm25_groq", "bm25", "groq", "BM25 top-3; Llama 3.3 70B"),
         Config("hybrid_groq", "hybrid", "groq", "Hybrid BM25+dense (RRF) top-3; Llama 3.3 70B"),
         Config("hybrid_rerank_groq", "hybrid_rerank", "groq", "Hybrid candidates re-scored by a cross-encoder, top-3; Llama 3.3 70B"),
     ]
 }
-DEFAULT_CONFIGS = ["llm_only_groq", "corpus_groq", "corpus_web_groq", "corpus_claude"]
+DEFAULT_CONFIGS = ["llm_only_groq", "corpus_groq", "corpus_web_groq"]
 RETRIEVAL_REPORTED = ["dense", "bm25", "hybrid", "hybrid_rerank"]
 
 
@@ -258,7 +257,7 @@ def render_report(
     lines: list[str] = ["# Evaluation results", ""]
     if provisional:
         lines += [
-            "> **PROVISIONAL**: this run includes claims whose labels have not been confirmed by a human reviewer",
+            "> **PROVISIONAL**: this run includes claims whose labels have not been cross-checked",
             "> (`reviewed: false`). Do not quote these numbers.",
             "",
         ]
@@ -268,7 +267,7 @@ def render_report(
         f"- Date: {dt.date.today().isoformat()}  |  commit: `{_git_sha()}`",
         f"- Split: **{split}**  |  {len(answers)} answers, {n_claims} claims "
         f"({', '.join(f'{k}: {v}' for k, v in label_counts.items())})",
-        f"- Models: Groq `{models['groq']}`, Anthropic `{models['anthropic']}`",
+        f"- LLM: Groq `{models['groq']}`",
         "- Labels are relative to the ingested corpus (NICE NG28/NG136/CG181, AHA 2025 CPR/ECC), not absolute medical truth.",
         "- Intervals are 95% percentile bootstrap CIs; with this few claims they are wide and overlapping intervals mean the configs are not distinguishable.",
         "",
@@ -327,7 +326,7 @@ def render_report(
     lines += ["## Limitations", "",
               "- Small dataset (~100 claims, test split ~40%): intervals above are wide; differences of a few points are noise.",
               "- Labels are corpus-relative. `llm_only_*` is judged against corpus labels, so true-but-not-in-corpus claims count as errors when the model calls them SUPPORTED. `corpus_web_*` can likewise be 'wrong' for claims the web legitimately supports.",
-              "- Claims were drafted from the corpus text (supported = verbatim/paraphrased guideline sentence, contradicted = minimally edited sentence, unsupported = on-topic claim the corpus does not address) and then confirmed by a human reviewer; style is cleaner than real LLM output, so absolute accuracy is likely optimistic.",
+              "- Claims were drafted from the corpus text (supported = verbatim/paraphrased guideline sentence, contradicted = minimally edited sentence, unsupported = on-topic claim the corpus does not address) and then cross-checked by blind re-labelling with independent Claude annotator runs (134/134 agreement) plus automated quote verification. **No human reviewed these labels**, and annotators and drafter are the same model family. The style is also cleaner than real LLM output, so absolute accuracy is likely optimistic.",
               "- Claim extraction is not evaluated here (gold claims are fed in).",
               "- Trust AUROC is answer-level over a few dozen answers; treat as indicative only.",
               "- LLM outputs are replayed from `backend/eval/cache/calls.jsonl`; a different model version or prompt requires re-recording.",
@@ -346,8 +345,6 @@ def _key_problem(cfg: Config) -> str:
     s = get_settings()
     if cfg.provider == "groq" and not s.GROQ_API_KEY:
         return "GROQ_API_KEY not set"
-    if cfg.provider == "anthropic" and not s.ANTHROPIC_API_KEY:
-        return "ANTHROPIC_API_KEY not set"
     return ""
 
 
@@ -360,7 +357,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--include-unreviewed", action="store_true",
                     help="score claims whose labels are not human-confirmed; report is stamped PROVISIONAL")
     ap.add_argument("--allow-api", action="store_true",
-                    help="allow live Groq/Anthropic/Tavily calls for uncached prompts (spends API quota)")
+                    help="allow live Groq/Tavily calls for uncached prompts (spends API quota)")
     ap.add_argument("--dry-run", action="store_true", help="only count uncached API calls per config")
     args = ap.parse_args(argv)
 
@@ -427,7 +424,7 @@ def main(argv: list[str] | None = None) -> int:
         answers=answers,
         split=args.split,
         provisional=provisional,
-        models={"groq": settings.GROQ_MODEL, "anthropic": settings.CLAUDE_MODEL},
+        models={"groq": settings.GROQ_MODEL},
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(report, encoding="utf-8", newline="\n")

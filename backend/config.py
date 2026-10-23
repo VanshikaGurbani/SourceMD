@@ -15,7 +15,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
     ANTHROPIC_API_KEY: str = ""
-    CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
+    CLAUDE_MODEL: str = "claude-haiku-5-5"
+
+    # Fail over to Anthropic (paid) when a Groq call fails and ANTHROPIC_API_KEY is set. Off by default.
+    LLM_FAILOVER: bool = False
 
     # Groq (free alternative — used when GROQ_API_KEY is set)
     GROQ_API_KEY: str = ""

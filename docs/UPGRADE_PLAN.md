@@ -31,7 +31,7 @@ Consequence: the "LLM only / no retrieval" ablation is judged against corpus-rel
 - `UNSUPPORTED` claims are plausible medical statements on the same topic that the corpus does not address. This is the label that needs the most human judgement.
 - ~100 claims in ~36 answers, roughly balanced across the three labels and the four documents.
 - **Split is by answer** (claims from one answer never straddle splits), fixed by a stored `split` field (`dev` ~60%, `test` ~40%), stratified so each split has all three labels. Prompt/threshold iteration uses `dev` only; the README reports `test` only.
-- Every row has `reviewed: false` until a human confirms it (`python -m backend.eval.review`). **The runner only scores rows with `reviewed: true`**; with `--include-unreviewed` it still runs but stamps the report `PROVISIONAL`. Drafts were prepared by Claude from the corpus text; they are not ground truth until the repo owner confirms them.
+- Every row has `reviewed: false` until a human confirms it (`python -m backend.eval.review`). **The runner only scores rows with `reviewed: true`**; with `--include-unreviewed` it still runs but stamps the report `PROVISIONAL`. Drafts were prepared by Claude from the corpus text. They were cross-checked by blind re-labelling (4 independent Claude annotator runs; 134/134 agreement) and automated quote verification, and are marked `reviewed` on that basis. No human has reviewed them, and this is stated wherever results are reported.
 - Optional later: a public set (SciFact / HealthVer). It needs a different corpus (abstracts), so it is a separate index and is **not** part of this iteration.
 
 ### Metrics (`backend/eval/metrics.py`, pure numpy/stdlib, unit tested)
@@ -51,7 +51,6 @@ Consequence: the "LLM only / no retrieval" ablation is judged against corpus-rel
 | `llm_only` | none (empty context, model uses own knowledge) | Groq Llama 3.3 70B |
 | `corpus` | dense top-3 over NICE/AHA corpus | Groq |
 | `corpus_web` | corpus, Tavily when best similarity < 0.35 (production behaviour) | Groq |
-| `corpus_claude` | corpus | Claude |
 | later (step 4) | `hybrid`, `hybrid+rerank` | best of above |
 
 ### Reproducibility without burning credits
