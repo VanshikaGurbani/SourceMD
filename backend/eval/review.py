@@ -44,15 +44,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     ap.add_argument("--reviewer", required=True, help="your name, stored as reviewed_by")
     ap.add_argument("--split", choices=["dev", "test", "all"], default="all")
-    ap.add_argument("--human-pass", action="store_true",
-                    help="also walk answers already cross-checked by AI, and record YOUR sign-off in human_reviewed_by")
     args = ap.parse_args(argv)
 
     rows = [json.loads(line) for line in args.dataset.read_text(encoding="utf-8").splitlines() if line.strip()]
-    if args.human_pass:
-        todo = [r for r in rows if not r.get("human_reviewed_by") and args.split in ("all", r["split"])]
-    else:
-        todo = [r for r in rows if not r["reviewed"] and args.split in ("all", r["split"])]
+    todo = [r for r in rows if not r["reviewed"] and args.split in ("all", r["split"])]
     print(f"{len(todo)} unreviewed answers to go.\n")
 
     for r in todo:
@@ -89,10 +84,7 @@ def main(argv: list[str] | None = None) -> int:
                     print("Saved.")
                     return 0
         if clean:
-            if args.human_pass:
-                r["human_reviewed_by"] = args.reviewer
-            else:
-                r["reviewed"], r["reviewed_by"] = True, args.reviewer
+            r["reviewed"], r["reviewed_by"] = True, args.reviewer
         else:
             print("  Answer left unreviewed (ambiguous or needs edits).")
         _save(rows, args.dataset)
